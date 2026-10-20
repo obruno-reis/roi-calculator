@@ -1,0 +1,3050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROI Builder — make an ROI calculator for your service</title>
+<meta name="description" content="Answer a few plain questions and get a branded ROI calculator, with code that drops into any website.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A1A17'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='%23F6F5F1' font-family='Georgia'>%25</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* =========================================================
+   ROI Builder — interface styles (the tool itself, not the calculator)
+   ========================================================= */
+:root {
+  --paper: #F6F5F1;
+  --surface: #FFFFFF;
+  --ink: #1A1A17;
+  --muted: #6B6A63;
+  --rule: #E3E1DA;
+  --rule-strong: #CFCCC2;
+  --accent: #3A3FD9;
+  --accent-soft: rgba(58, 63, 217, .08);
+  --danger: #B42318;
+  --ok: #2E6B45;
+  --stage: #EFEDE7;
+  --stage-dot: #D9D6CC;
+  --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121211; --surface: #1B1B19; --ink: #EDEBE5; --muted: #9B9990;
+    --rule: #2C2B28; --rule-strong: #3D3C38; --accent: #8A8FFF; --accent-soft: rgba(138, 143, 255, .12);
+    --danger: #F97066; --ok: #6FCF97; --stage: #171716; --stage-dot: #2A2926;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211; --surface: #1B1B19; --ink: #EDEBE5; --muted: #9B9990;
+  --rule: #2C2B28; --rule-strong: #3D3C38; --accent: #8A8FFF; --accent-soft: rgba(138, 143, 255, .12);
+  --danger: #F97066; --ok: #6FCF97; --stage: #171716; --stage-dot: #2A2926;
+  color-scheme: dark;
+}
+
+* , *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition: none !important; animation: none !important; } }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 12px; top: -48px; background: var(--ink); color: var(--paper); padding: 8px 12px; border-radius: 6px; z-index: 50; text-decoration: none; }
+.skip:focus { top: 12px; }
+
+/* ---------- Top bar ---------- */
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 40px) 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.brand { font-family: var(--serif); font-size: 24px; line-height: 1; text-decoration: none; letter-spacing: -.01em; }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- Buttons ---------- */
+.btn-primary, .btn-quiet, .btn-text, .icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 6px; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-primary { background: var(--ink); color: var(--paper); border: 1px solid var(--ink); padding: 11px 18px; font-weight: 500; min-height: 44px; }
+.btn-primary:hover { background: color-mix(in srgb, var(--ink) 86%, var(--paper)); }
+.btn-quiet { background: transparent; border: 1px solid var(--rule-strong); padding: 7px 12px; font-size: 14px; min-height: 36px; }
+.btn-quiet:hover { border-color: var(--ink); }
+.btn-quiet:disabled, .icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-text { background: none; border: 0; padding: 4px 2px; color: var(--accent); font-size: 14px; font-weight: 500; }
+.btn-text:hover { text-decoration: underline; text-underline-offset: 3px; }
+.icon-btn { width: 36px; height: 36px; border: 1px solid var(--rule-strong); background: transparent; font-size: 15px; padding: 0; }
+.icon-btn:hover { border-color: var(--ink); }
+.icon-btn.small { width: 30px; height: 30px; font-size: 13px; border-color: transparent; color: var(--muted); }
+.icon-btn.small:hover { border-color: var(--rule-strong); color: var(--ink); }
+
+/* ---------- Hero ---------- */
+.hero {
+  display: grid; gap: clamp(28px, 4vw, 56px); align-items: start;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  padding: clamp(32px, 6vw, 80px) clamp(16px, 4vw, 40px) clamp(40px, 6vw, 88px);
+  max-width: 1440px; margin: 0 auto;
+}
+.hero-copy { padding-top: clamp(0px, 3vw, 40px); }
+.hero h1 {
+  font-family: var(--serif); font-weight: 400; font-size: clamp(2.75rem, 5.6vw, 5.25rem);
+  line-height: .96; letter-spacing: -.015em; margin: 0 0 24px; max-width: 11ch; text-wrap: balance;
+}
+.lede { font-size: 17px; line-height: 1.55; color: var(--muted); max-width: 40ch; margin: 0 0 28px; }
+.hero-note { margin: 18px 0 0; font-size: 13px; color: var(--muted); }
+.stage {
+  background-color: var(--stage);
+  background-image: radial-gradient(var(--stage-dot) 1px, transparent 1.2px);
+  background-size: 14px 14px; border: 1px solid var(--rule);
+  padding: clamp(12px, 2.4vw, 28px);
+}
+@media (max-width: 960px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-copy { padding-top: clamp(0px, 3vw, 40px); }
+.hero h1 { max-width: 14ch; }
+}
+
+/* ---------- Builder layout ---------- */
+.build { border-top: 1px solid var(--rule); scroll-margin-top: 0; }
+.build-grid {
+  display: grid; grid-template-columns: minmax(360px, 480px) minmax(0, 1fr);
+  max-width: 1440px; margin: 0 auto; min-height: 100vh;
+}
+.wizard { padding: 28px clamp(16px, 3vw, 36px) 48px; border-right: 1px solid var(--rule); min-width: 0; }
+.preview { position: sticky; top: 0; align-self: start; height: 100vh; display: flex; flex-direction: column; min-width: 0; }
+.preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(16px, 2vw, 24px); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.preview-bar strong { font-weight: 500; font-size: 14px; }
+.preview-tools { display: flex; gap: 8px; align-items: center; }
+.preview-stage { flex: 1; overflow: auto; border: 0; display: flex; justify-content: center; align-items: flex-start; padding: clamp(16px, 3vw, 40px); }
+.frame { width: 100%; max-width: 1040px; transition: max-width .25s ease; }
+.frame.is-mobile { max-width: 360px; }
+.mobile-tabs { display: none; }
+@media (max-width: 900px) {
+  .build-grid { grid-template-columns: 1fr; min-height: 0; }
+  .wizard { border-right: 0; }
+  .preview { position: static; height: auto; }
+  .preview-stage { min-height: 70vh; }
+  .mobile-tabs {
+    display: flex; position: sticky; top: 0; z-index: 20; gap: 4px; padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+    background: var(--paper); border-bottom: 1px solid var(--rule);
+  }
+  .mobile-tabs button { flex: 1; min-height: 40px; border: 1px solid var(--rule-strong); background: transparent; border-radius: 6px; cursor: pointer; }
+  .mobile-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .build-grid[data-view="edit"] .preview { display: none; }
+  .build-grid[data-view="preview"] .wizard { display: none; }
+  .preview-tools .frame-tools { display: none; }
+}
+
+/* ---------- Step navigation ---------- */
+.steps { list-style: none; margin: 0 0 28px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
+.steps button {
+  width: 100%; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 6px 2px 12px; text-align: left; cursor: pointer; color: var(--muted); display: grid; gap: 2px;
+}
+.steps .num { font-family: var(--serif); font-size: 26px; line-height: 1; }
+.steps .name { font-size: 13px; }
+.steps button[aria-current="step"] { color: var(--ink); border-bottom-color: var(--ink); }
+.steps button:hover { color: var(--ink); }
+.step-head h2 { font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.05; margin: 0 0 6px; letter-spacing: -.01em; }
+.step-head p { margin: 0 0 8px; color: var(--muted); max-width: 46ch; }
+.step-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--rule); }
+
+/* ---------- Sections inside a step ---------- */
+.sec { padding-top: 26px; margin-top: 26px; border-top: 1px solid var(--rule); }
+.sec:first-of-type { border-top: 0; margin-top: 12px; padding-top: 8px; }
+.sec > h3 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+.sec > .sec-note { margin: 0 0 16px; color: var(--muted); font-size: 14px; max-width: 48ch; }
+details.sec > summary { cursor: pointer; font-size: 16px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::after { content: "Show"; font-size: 13px; font-weight: 500; color: var(--accent); }
+details.sec[open] > summary::after { content: "Hide"; }
+details.sec[open] > summary { margin-bottom: 4px; }
+
+/* ---------- Form controls ---------- */
+.g-stack { display: grid; gap: 16px; }
+.g-row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.g-field { display: grid; gap: 6px; min-width: 0; }
+.g-field > label, .g-label { font-size: 13px; font-weight: 500; }
+.g-hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.g-error { font-size: 12.5px; color: var(--danger); margin: 0; }
+.g-input, .g-select {
+  width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule-strong); border-radius: 6px; padding: 9px 11px; min-height: 40px;
+}
+textarea.g-input { resize: vertical; line-height: 1.45; }
+.g-input:focus, .g-select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.g-input[aria-invalid="true"] { border-color: var(--danger); }
+.g-input.mono { font-family: var(--mono); font-size: 13px; }
+.g-select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 30px; }
+.seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); }
+.seg button { flex: 1 1 auto; border: 0; background: transparent; padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 13.5px; color: var(--muted); min-height: 34px; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; position: relative; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .track { width: 34px; height: 20px; border-radius: 999px; background: var(--rule-strong); position: relative; flex: none; transition: background .15s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); transition: transform .15s; }
+.switch input:checked + .track { background: var(--ink); }
+.switch input:checked + .track::after { transform: translateX(14px); background: var(--paper); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Templates (a radio list, not a card grid) ---------- */
+.tpl-list { display: grid; border-top: 1px solid var(--rule); }
+.tpl {
+  display: grid; grid-template-columns: 20px 1fr; gap: 2px 12px; padding: 12px 4px; border-bottom: 1px solid var(--rule);
+  cursor: pointer; align-items: baseline;
+}
+.tpl input { margin: 0; accent-color: var(--ink); width: 16px; height: 16px; transform: translateY(2px); }
+.tpl-name { font-weight: 500; }
+.tpl-desc { grid-column: 2; font-size: 13px; color: var(--muted); }
+.tpl:hover .tpl-name { text-decoration: underline; text-underline-offset: 3px; }
+.tpl:has(input:checked) { background: var(--accent-soft); }
+
+/* ---------- Editable item lists (fields, assumptions, steps, rows) ---------- */
+.items { display: grid; border-top: 1px solid var(--rule); margin-bottom: 12px; }
+.item { border-bottom: 1px solid var(--rule); }
+.item-head { display: flex; align-items: center; gap: 4px; }
+.item-toggle { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; background: none; border: 0; text-align: left; padding: 12px 4px; cursor: pointer; }
+.item-toggle::before { content: "+"; font-family: var(--mono); color: var(--muted); width: 12px; flex: none; }
+.item.is-open .item-toggle::before { content: "\2212"; }
+.item-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-meta { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.item-tools { display: flex; flex: none; }
+.item-body { padding: 4px 4px 20px 26px; display: grid; gap: 14px; }
+.subhead { font-size: 13px; font-weight: 600; margin: 6px 0 0; }
+.opt-row { display: grid; gap: 8px; grid-template-columns: 1fr 90px auto; align-items: end; padding: 10px 0; border-top: 1px dashed var(--rule); }
+.opt-row.cards { grid-template-columns: 1fr 1fr; }
+.opt-row.unit-row { grid-template-columns: 1fr 1.3fr 80px; }
+.opt-row .opt-wide { grid-column: 1 / -1; }
+.opt-row .opt-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+.plain-row { display: grid; gap: 8px; grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr auto; align-items: end; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+@media (max-width: 520px) { .plain-row { grid-template-columns: 1fr 1fr; } .opt-row { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- Formula builder ---------- */
+.fb { display: grid; gap: 8px; }
+.fb-blocks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 30px; padding: 6px 8px; border: 1px dashed var(--rule-strong); border-radius: 6px; font-family: var(--mono); font-size: 13px; }
+.fb-blocks:empty::before { content: "Your formula appears here as blocks."; color: var(--muted); font-family: var(--sans); font-size: 12.5px; }
+.fb-blocks .b-name { background: var(--accent-soft); color: var(--ink); border-radius: 4px; padding: 2px 7px; font-family: var(--sans); font-size: 12.5px; }
+.fb-blocks .b-num { padding: 2px 2px; }
+.fb-blocks .b-op { color: var(--muted); padding: 0 2px; }
+.fb-text { font-family: var(--mono); font-size: 13px; }
+.fb-status { font-size: 12.5px; margin: 0; color: var(--ok); }
+.fb-status.is-error { color: var(--danger); }
+.fb-status.is-quiet { color: var(--muted); }
+.fb-palette { display: grid; gap: 8px; padding: 10px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+.fb-palette[hidden] { display: none; }
+.fb-group { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.fb-group-name { font-size: 12px; color: var(--muted); width: 100%; }
+.chip {
+  border: 1px solid var(--rule-strong); background: var(--paper); border-radius: 4px; padding: 3px 8px;
+  font-size: 12.5px; cursor: pointer; min-height: 28px; line-height: 1.2;
+}
+.chip:hover { border-color: var(--ink); }
+.chip-id { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
+.chip.op { font-family: var(--mono); min-width: 32px; font-size: 14px; }
+.chip.fn { font-family: var(--mono); }
+.chip-num { display: inline-flex; gap: 4px; }
+.chip-num input { width: 78px; font-family: var(--mono); font-size: 12.5px; border: 1px solid var(--rule-strong); border-radius: 4px; padding: 3px 6px; background: var(--paper); color: var(--ink); min-height: 28px; }
+
+/* ---------- Look step ---------- */
+.color-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.color-row input[type="color"] { width: 44px; height: 40px; padding: 2px; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); cursor: pointer; }
+.color-row .g-input { width: 120px; font-family: var(--mono); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); cursor: pointer; padding: 0; }
+.swatch[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
+.contrast { display: grid; gap: 0; font-size: 13px; margin-top: 4px; }
+.contrast-mode { font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+.contrast-row { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.pair { width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center; font-size: 11px; font-weight: 600; border: 1px solid rgba(0,0,0,.08); }
+.ratio { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.verdict { font-size: 12px; font-weight: 600; }
+.verdict.pass { color: var(--ok); }
+.verdict.fail { color: var(--danger); }
+.notice { margin: 10px 0 0; padding: 10px 12px; border-left: 2px solid var(--accent); background: var(--accent-soft); font-size: 13px; }
+.font-list, .layout-list { display: grid; border-top: 1px solid var(--rule); }
+.font-opt, .layout-opt { display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+.font-opt input, .layout-opt input { margin: 0; accent-color: var(--ink); width: 16px; height: 16px; }
+.font-name { font-size: 18px; line-height: 1.2; }
+.font-sample { font-size: 13px; color: var(--muted); }
+.layout-opt svg { width: 64px; height: 40px; color: var(--muted); }
+.layout-opt:has(input:checked) svg { color: var(--ink); }
+.logo-box { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.logo-box img { max-height: 40px; max-width: 160px; border: 1px solid var(--rule); padding: 4px; background: var(--surface); }
+
+/* ---------- Export step ---------- */
+.code {
+  margin: 0; padding: 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+  font: 12px/1.6 var(--mono); max-height: 420px; overflow: auto; white-space: pre; tab-size: 2; color: var(--ink);
+}
+.export-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.howto { display: grid; margin-top: 8px; border-top: 1px solid var(--rule); }
+.howto div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; }
+.howto dt { font-weight: 600; }
+.howto dd { margin: 0; color: var(--muted); }
+@media (max-width: 520px) { .howto div { grid-template-columns: 1fr; gap: 2px; } }
+.warn { margin: 0 0 16px; padding: 10px 12px; border-left: 2px solid var(--danger); font-size: 13.5px; background: color-mix(in srgb, var(--danger) 7%, transparent); }
+
+/* ---------- Footer + toast ---------- */
+.foot { border-top: 1px solid var(--rule); }
+.foot-util { padding: 16px clamp(16px, 4vw, 40px); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+
+/* Credit block: fixed dark band, same in light and dark mode */
+.credit {
+  background: #1B1B1B; color: #F5F5F5; text-align: center;
+  padding: clamp(72px, 10vw, 128px) 24px calc(clamp(72px, 10vw, 128px) + env(safe-area-inset-bottom, 0px));
+}
+.credit h2 {
+  margin: 0 auto; max-width: 17ch; font-family: var(--sans); font-weight: 600;
+  font-size: clamp(1.9rem, 3vw, 2.5rem); line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance;
+}
+.credit p { margin: 18px 0 0; font-size: 17px; }
+.credit-card {
+  display: inline-flex; align-items: center; gap: 14px; margin-top: 30px; padding: 6px 10px 6px 6px;
+  border-radius: 999px; color: inherit; text-decoration: none; text-align: left;
+}
+.credit-card img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; }
+.credit-text { display: grid; gap: 2px; }
+.credit-name { font-size: 18px; font-weight: 500; }
+.credit-site { font-size: 14px; color: #D6D6D6; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: text-decoration-color .15s; }
+.credit-card:hover .credit-site { text-decoration-color: currentColor; }
+.credit-card:focus-visible { outline: 2px solid #F5F5F5; outline-offset: 4px; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 14px; z-index: 60; max-width: min(520px, calc(100vw - 32px));
+  transition: opacity .2s, transform .2s;
+}
+.toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+</style>
+<!-- Styles for the two live calculators on this page (generated at runtime) -->
+<style id="rc-base"></style>
+<style id="hero-vars"></style>
+<style id="pv-vars"></style>
+</head>
+<body>
+<a class="skip" href="#build">Skip to the builder</a>
+
+<header class="top">
+  <a class="brand" href="#">ROI Builder</a>
+  <div class="top-actions">
+    <button class="btn-quiet" id="import-btn" type="button">Import config</button>
+    <input type="file" id="import-file" accept="application/json,.json" hidden>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch to dark mode">&#9680;</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <h1 id="hero-title">Build the ROI calculator for your service in 3 minutes.</h1>
+      <p class="lede">Answer a few plain questions. The builder handles the design and the math, then gives you code that drops into any website.</p>
+      <a class="btn-primary" href="#build" id="start-btn">Start building</a>
+      <p class="hero-note">This calculator is live. Change the numbers to see it work.</p>
+    </div>
+    <div class="stage" aria-label="Example calculator">
+      <div id="hero-scope"><div id="hero-calc"></div></div>
+    </div>
+  </section>
+
+  <section class="build" id="build" aria-label="Builder">
+    <div class="mobile-tabs" aria-label="Builder view">
+      <button type="button" id="tab-edit" aria-pressed="true">Edit</button>
+      <button type="button" id="tab-preview" aria-pressed="false">See preview</button>
+    </div>
+    <div class="build-grid" id="build-grid" data-view="edit">
+      <div class="wizard">
+        <nav aria-label="Steps">
+          <ol class="steps" id="steps-nav">
+            <li><button type="button" data-step="0"><span class="num">1</span><span class="name">Words</span></button></li>
+            <li><button type="button" data-step="1"><span class="num">2</span><span class="name">Math</span></button></li>
+            <li><button type="button" data-step="2"><span class="num">3</span><span class="name">Look</span></button></li>
+            <li><button type="button" data-step="3"><span class="num">4</span><span class="name">Export</span></button></li>
+          </ol>
+        </nav>
+        <div id="step-body" tabindex="-1"></div>
+        <div class="step-foot">
+          <button class="btn-quiet" type="button" id="prev-btn">Back</button>
+          <button class="btn-primary" type="button" id="next-btn">Next</button>
+        </div>
+      </div>
+      <div class="preview" aria-label="Live preview">
+        <div class="preview-bar">
+          <strong>Live preview</strong>
+          <div class="preview-tools">
+            <div class="seg frame-tools" role="group" aria-label="Preview width">
+              <button type="button" id="w-desktop" aria-pressed="true">Desktop</button>
+              <button type="button" id="w-mobile" aria-pressed="false">Phone</button>
+            </div>
+            <button class="btn-quiet" type="button" id="reset-values">Reset values</button>
+          </div>
+        </div>
+        <div class="stage preview-stage">
+          <div class="frame" id="pv-frame"><div id="pv-scope"><div id="pv-calc"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-util">
+    <span>Your work saves in this browser as you go.</span>
+    <button class="btn-text" type="button" id="start-over">Start over</button>
+  </div>
+  <section class="credit" aria-labelledby="credit-title">
+    <h2 id="credit-title">Have any questions or feedback?</h2>
+    <p>Feel free to get in touch</p>
+    <a class="credit-card" href="https://brunoreis.cc" target="_blank" rel="noopener" aria-label="Bruno Reis, portfolio at brunoreis.cc (opens in a new tab)">
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wgARCACgAKADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAwQBAgUABgf/xAAZAQADAQEBAAAAAAAAAAAAAAAAAgMBBAX/2gAMAwEAAhADEAAAAfmHD7A5kuzXTZs4xhdzozq4bM33nfNuSqmmdaiH2MnWm+HoI+lrLAiZnVHtFWkl7wZ0B1+Vq0JfcrPo+lbzhXaZq0FGAqdWkoaUllNZaubtpvqI6LAWLRW6OR9H6EPc4+9dfTVSuRi+kyzMkKQHjNDLVkKt4tAJ12Vu8ucBJBhdm0VNXK1pV+ltIh4PT2KYk0S2NjzSSqeqk0whFakZ6ast6RKs8uQILMrMXgremhOvvcjdvw+lk6z9RsKwN1kw/Neo8g8lQkHfksIyrKxNSI/QvzLYy1qyqQMK30ze8B7Ph9N3zS3nHQuminSO55iq7yJ0QydS9NUhwsJVWNtRHzaaYHRDumsSb2Awrue08A+lbv4i+r1aualaesJydnkQ+swKxQ6grw11Wl5dAi1lsVqcVOfmAEN0kPTOSt4mdhVkV0CTKrTOHmZv0nyOITVkZ6Wk2qxTGFaK1l3dXcpfr7k+l8tdH9ln+bqlNzMVjViL2pKtpnSIngNFeCa27SsWkBFHOEcQYWiLBXrcERaAiZqHVIIP/8QAKhAAAgIBAgUEAwEAAwAAAAAAAQIAAwQREgUQEyExIDIzQRQiI0IVMET/2gAIAQEAAQUC0hY6pc9bLl2LHyS8/L/R33mdwvDo/n/V3yOe2N8z+2z5BQ9mNVB6dPRq0pyLKJ+a5n/IqWsvV2YgjGIF1ntf30Dbw6vwom2Eacts0gh9KmdposKrzXLuWoWFILowlk+z4E+2lNL3MnB3IfhRWPjPXAkKTbGE05t51hlviHx4naYmG2Y+NhpSuzSbJZWI6Gk9esz8imXBGdkTYK46bQPKKDPq4frD4MUanh+KMagTSMNI8vEt/Ww+bPjc9gZb4CuZjd2lvtEMM4VWLMxIuphEbQS/LorlmVTdMjxuj2AqxGi+bZXYyJin+hlvth8GcKfZmJ5u4nTjyriovfiLutFVCMWsx2Z6Z0gazyXzZAP54nyGWH9YYZU/Td3L1WW49IwqnJzl6mPRUpU4VcvTRKDpc/meCzalQOlh/JrLPbDGnDhrl1aOi4lYYVhE2g1rfVTbqrrlNoP/AFW97JYQZ9r8WH79Y/t+o0otNNtDgZCy3dsdmqhZKbTxVUrbJGTS9n9pry+9f54fu3GF5v7dQRjrBKs5RQlmoyuM9NlF+Y1nDmVTgHTcUH+jPufe09HC87Z0zOm0Kkc1Ohx86yoVBLMi+lFxzrv/ACqxSx71ruYpNJ5jeeo2xLTVK8eqxTsWbkly9uadwNdTks1b2knXlSu1aeErfUeBGHgtgmZjnHaGYzahvP3b7dBPHKr3WUN04eVabiRoMXMsxZXxtuoualo4o26zd/PWYrEKR+0s9pK7T58Rf1nCbQ0v4SjG3h7pOjpEqlugXtVGbeysylrGeJZtUEiYunS/3p3PfkTF8tEdkajjZUHimG4bLxJZn1SzKd4ST6sfTo9hPPNosYQctJpz09WvpaDkRAeWk09besia8iP+kT7/AP/EACQRAAIBAwQCAgMAAAAAAAAAAAABAgMQERITITEyQQRRFDBC/9oACAEDAQE/ARNro1SMCfIpom/opdHtkekNWwNcm0xQZgdlJkr06OlZMEkOqyYyiyVoeSJTSNXs1P2OLyOWbRbyiVorMkhxyJcCwTeJIkSIdobtnnJCpklW9RHuIlUbvT8kbX2OnxxaLaKdRI3MdEVln48u0VKUorLNTP5F4uyfJtalqibchQ0o35RXBU+TrjhiwxySSNTvGbj0b8h1ZP8Ad//EACMRAAICAQMEAwEAAAAAAAAAAAABAhEQAxJBEyExMgQUMEL/2gAIAQIBAT8BGk/JtWGuxsYkavscI5YmVi+x1EORYsbURzPV3OsIWkiIiRHEvVkY2UbUJoUaw0qZHD8CdHI7ILsIiS8MSxwTjRHT5ZUeSMKwifqzqCnhqyULNlknSPsR8M09WMnSKR/Rzhqzfte2R1EOVsWhGbto0/jKErRTFG2bVmUFLydCItKKK/X/xAAvEAABAwIFAgQFBQEAAAAAAAABAAIRITEDEBIgIkFRMDJhcQQTIzOBQFJigpFC/9oACAEBAAY/Al5iVqaahG1TKq0LToU5NIT8sL2RyCOTnNFGiSneyHhHSBVVYmE4ZGlTkEa5Y5/ineyHi2VsrlXTsOeLro+qFMhu04bS4rm+PZUcqtVj4+kUaLlaGNzspYKdlOlfbWoCAqTKvkVbdAQZ167j2O4loJi+9s/812SuTqri6D6qUFGzE0m+9v8AKmX7kGhpAKoYXzMd8M9eqAw4if2wiOhQi99gT8htDuxlN02eFxwtbv8AYWp4I9O2RoK3Vh/iKc0+6KGbzO9lAb3VQKSKIuFJVFyKdDv6rU00OQ9Qne6Cpk7YM24gu0p7AaOjEb+cjpuLItf8Tyd0cLIzym57rQxkQtY/IUjaUd/w79X1MLg5vdqoUW4fSidpa589VzxmNPZEtfMLSN0+qOyucrTPFDX5Sar6btLW9ly6ItHm36JouKcZfLRNFdy6qe2yMtBdbYXd03Ebi0cvurzhAHPFknyobgvmNHA32emWlvIXhRjYehvcLg8O9k1ABte68qxoPSF1vl+UIvnKfhPrNYUsMKlVUZySpUtJC5GUWxfLG1CaUQyrtDmmCFGNhz6tVdY/C8xP9VwY4qIACruxJN/Aj9fH6SV//8QAJRABAAICAgICAgMBAQAAAAAAAQARITFBURBhcYGRoSCxwdHw/9oACAEBAAE/Iadx9lHawnV0WTE1ZlnM/pzA5umbmKCTiPshlljdE/8ADqYJ3cTDjw21+5shFGIMN4zKlSvAI6hMIXgmcD2jof1AAoU1zEpEM4ZhjmWSh7lNFzDTnvablMZH7hHKJzqa2xwgyw4hKleAnwRfh4aBr80VvZgLx6FSkBcENniYNQ4UNIMvDnNCfBiOJZAXQuBZn5JvZOyKH+U+T8R94g1NIHjCLQ4OocYbJul7Q5Dnqd1R1wmEP7jVEsbd4RuBW3zH/hI6H9Iqc3EMNnuWxnrj4LjPLE3GBCrJumRGoLXARJGeX2w46lUzLTUPqAl9Q1iGqaIaajjHcVtmw4mQLxBomZmxNGaTYYt+MrUEECVLMVQPQ4hVZKjgzJcxmUGZQKII4fML0DFifecJ/bAzNngAr0fEI2067heQyvDGT2RgFiey/ScfCzBAL1PuNEqRT76m83Xh3+UZUMXBZix4U4mj4oO5KMuSwo8RDY+3b2eoTuOco2mwuZmq4PJMbgbApUrUHRnGIMEW6VUzCi+YxVG8HgbPxM5OJozlCIvpAbLp4gogtRoUwwL7VMWRwIepSS/LL8ShAhZLODi7CMoatKpTqU0cI/zw3JdjuNQdePIKPmWJA+AM/uVY0Fd1u4JdZ6QfcggM2PcDuEFznofRMHUYixShHc4QR72frQLiWlVEoK1MEGFKPFux2QRbBLGPTsrSwo34H3Lx7Ct/USAeTxLlE79zYgSOkdzhBEDED8Us8xfqPVNaq/NNFV5tXxLz1B0x2OLK7rCx6mdFsfMuVYLmDNGWF2zFube4aMAQyt1Gm25WQ0a5aCy2rSKNH3gYl4Z8E4io5TI2cweysquNbX/sesWyd6f0mAWXrXqcAfiZUX6iWit6lYm0Z6HswX8k4a3K8uZ7olqnErngxcBPSclfmK6udXNtFTWCAIDmVrPqCrewuowSDdpafTOgmWBuUMwACFR7lxINdcxwQYobm7HMQ2cxWBhgLuAue5gj5j9YJnyMQLrEIBvLLPaNEZHzLATsalWvXufmohTVRl0SBXVNwCGIVe4j/KX6JUe4LszQips4SCbvur9Tej7njfaQZXuGiCoe+4jaV9+CVNRjFINAO4C3ycxyvuPmJZHymJSIlSvGv4VWZpRiLjxUII6hmVZJwv8AAqVGVNQI3Al1Of4VcpYUl34S5flleHwMvpP/2gAMAwEAAgADAAAAENTRHCKVscislYXSaQT3q3s0pQFtZZzgSvz3iKPfjtRZjl+VUVO9XSZ0j0ab0Eg+ZEBT0iZTBHvOYmZMwMd+je7NkQXbyZW/796g/v/EAB8RAQEBAQEAAwEAAwAAAAAAAAEAESExEEFR8DBhcf/aAAgBAwEBPxDfyU1Wwi+xjlkG26xr1evwD+P92Fvb9WmCPxiMr7JG8LYX3Dl92vl2HrBgOnH4GBdPbGcg4JDiT7Z7fsT26MS/omaJl2fLI7fefZDftn7Htjlj4tAS6yxw+HqSdtAEXh/mLctZaZZO+zswYWGwNPWfCmkCie29T2JQwsyWGI+W6T+9hlvORAWcX2/V2xLRk4Xn1JlSQ1gK5Ztvx7y/5XNW3/L/AP/EAB8RAQEBAQEAAwEAAwAAAAAAAAEAESExEEFRIGFxof/aAAgBAgEBPxDP28RZoh5bvZ1BPHk3NLwlzCWtG8W/UY0z+sOQPpvHtlp3Jdvqw9uQ8lclvHyA20Mtb2fqMukeX1PydcsjjGfBsnYgZHsRQ7ey+pY1jWJbuglNFHC6Nfh4sPIPDKtSbPEtYOvyM+CINuEyg/BDGZCMjG/AZun/AC3DDaZ7HFbojs4Qj/ELjo2fLPR926pDcJ0SA+rIOXhr/ZdgImWfwf03/8QAJRABAAICAgIDAQEAAwEAAAAAAQARITFBUWFxgZGhsRDB0fDh/9oACAEBAAE/EKWxDBQo2WGGKVaBqbNRyqmWK8ty4sMsBTrDoIdw0mJytdxoplCVLd0wW/FGCO5BCSHjifrl3Ywgw+pYYAXol9tUZgPaEtdyzL9z5/48JBXymkqzaKDxcTfPaS9uryqmeBAXpUStjA7gB84iGJezDVBpyMa3u42Cw/txJdAxrRin9iOh+o1bC9QzQi48AQjC7uYyrqVH3NfmD5hNeGA3r1FS2h6mxN8QDiz0zCmgdrnbDDpWcCUngA3HSoxad1DyKepT0GBehZWspdPcKwz905YA1wO10QmlGP7TRES8F0OfpjVe+JEd11YzncH5Ec19v8KvZbxMmBjkqqiWxHoipcpWoaY190OHxKC2rjQpU5pqFbklKw9Ha8EHU6vGV2vLDzFVg6jSJglaBURIl6Q8dMPsKuqTY9RikeooAgUl2QlPCDxXD2LZicW4ZIhEsWKjixipV7IbHNkJTXENp5g9CgG1WggLKK+13nxr0TBr6RpHZ3KBlTxLS2viGeXCXwpbTzKFLlmy4LIC33CIPMQL3ZKfDsFg8xtMN7epSCcSvtSnyT8sSL3EI0Ke3T9T6g5TEIO4CxjmCstYjU43mfbqIGPZOT3xC3F7l8zMmFC7sg6wnmWH3NB4QDKBnJN7kwR5Irv2QYcsYWQqHJfEzE8xkALZ7Sz9IkIPl9cseBSZxz0Llgq5murzLu0Qe6/9xF/7ZzOsDi+deYZtlN6TsYdi2KaIVrznw3X0MCnqCUXiaYrgskAWz5lK/RG5cwWqYl4mA+5ReAPpuWhE0RHTXzCHegZFhYIFMAK+CVTLmd7YRDxDK6kBXXETCnhro0JqjgmQSMUCmeLouuopBYA91n+QPoUoEriPKCJ6lQ0EM7A5Ny0nWcIvs/zdeqa+01dYr7C8qq4XtA4rEo6MQU+XSW/MXNLWVy/LysbjRi25h1Fuig2iAXMTwwi1V2bjhNeU7/4imxVVa3FGKtHK6ozF+6NTim8tfUvWaTuJZ7v+xW/Uwv3KOUBHQ5H2WfMegsnklPgfsTHBWL7mFmHBekrTYVieOn3Ap2RtZKS9hqE70iaK4j1UfJhULdWf0S5jgcEyisXmGw0UsDYbtMgn7j3mfMQSG0srkxAcMAbsh1UHYY4HYAfMPMeR2OmBI103dc+rjE94DA5ysbqAHWhZur4Qv0qV0lIZeriBanLxEMlQOhlhlSq90QYnJqWP0osoE0VvmD3f0yjv2F8yvMDMcjYzM/5Ctfgyua1R1eZeMi6NH7moHBEDXQrH/u4i432Tru+4vbDVcxOEGV4piWOypEM/4ld9xkJcU5mNBFNlzOehVanVOoDtAoyr9Mo8S6sH8jsaaAbtl5izA/UXWi6VCzqUBgSzWaj2d5aytfcVFCtq4w31Fa6le2XTlqOoVirrlMaOgRlp9hsjd98zfhCPwl6Tkm+aaaZOSAFctsxArpY0azKUFrzqYlsOKxuCtrp3CECF3d/UAIiAW4038pMNKhKF3Eotru67xAtKAvV3jccEIG17jEQllV4j0PpBGYVWLN4zUcuBQtvtHZ6hec5Fe4ZjdJMspWldkHondShh8FkpoYi/AaLo9QpEWvCcxjVukYDta3mJQLrS+YCHoETFnVwc15mQVWHwPzEdiEiWFmKr+RWoI6vqBoUTniZgAwRxRYWcYixaREM41X/qzNtq10dTpAal+RNNFDmh7iiXBXYh1YN7INktPAZqs4jOWm2m+GKx0qn/AHDMBFs6QAJiu6qVyVbnqK2ojRPmMfi2pGUA7gJ8qx9JMxI2O/y4FvJcf/CXm3FL/WdTAC32zyHpXDOKxBiwg+cQNqiVywEUFNq7xANVDaNReTFmoCzIqWmJ/wAX/IROopsZ0H6j4y+sQ8swJuHjX+OdfUoLcRIAAFAS9HiUBXEaXDmK5NTTiBmOtU07Il6itMQe4GFMsFsKYjhiIxnKcRuruFomolwcxApmSIypzKGZLLlDuW2kcwyT8QSxKmTBWeiK20aPc//Z" alt="" width="48" height="48">
+      <span class="credit-text"><span class="credit-name">Bruno Reis</span><span class="credit-site">brunoreis.cc</span></span>
+    </a>
+  </section>
+</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ===========================================================================
+   ROI CALCULATOR RUNTIME
+   One self-contained function: a safe formula engine plus the renderer.
+   The builder uses it for the live preview, and every export embeds this
+   exact code, so what you see in the preview is what ships.
+   No eval(), no new Function(), no dependencies.
+   =========================================================================== */
+function ROICalcRuntime() {
+  'use strict';
+
+  /* -------------------------------------------------------------------------
+     1. FORMULA ENGINE
+     Supports numbers, names, + − × ÷ (or + - * /), parentheses,
+     comparisons (> < >= <= == !=) and min(), max(), round(), abs(), if().
+     ------------------------------------------------------------------------- */
+  var FUNCTIONS = {
+    min:   { minArgs: 1, maxArgs: 99 },
+    max:   { minArgs: 1, maxArgs: 99 },
+    round: { minArgs: 1, maxArgs: 2 },
+    abs:   { minArgs: 1, maxArgs: 1 },
+    'if':  { minArgs: 3, maxArgs: 3 }
+  };
+  // Every symbol people might type, mapped to one internal operator.
+  var SYMBOLS = {
+    '+': '+', '-': '-', '\u2212': '-', '\u2013': '-', '*': '*', '\u00d7': '*', '\u00b7': '*',
+    '/': '/', '\u00f7': '/', '(': '(', ')': ')', ',': ',', ';': ',', '>': '>', '<': '<'
+  };
+  var PRETTY = { '*': '\u00d7', '/': '\u00f7', '-': '\u2212' };
+  // Names the engine fills in by itself. Fields can't use them.
+  var RESERVED = ['benefit', 'cost', 'net', 'roi', 'payback', 'investment', 'period'];
+  var has = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
+
+  function FormulaError(message, pos) { this.message = message; this.pos = pos || 0; }
+
+  function q(s) { return '\u201c' + s + '\u201d'; }
+
+  /* Splits text into tokens: numbers, names, operators and brackets. */
+  function tokenize(src) {
+    var s = String(src == null ? '' : src), i = 0, out = [];
+    while (i < s.length) {
+      var c = s.charAt(i);
+      if (/\s/.test(c)) { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        var j = i;
+        while (j < s.length && /[0-9.]/.test(s.charAt(j))) j++;
+        var raw = s.slice(i, j);
+        if (!/^(\d+(\.\d*)?|\.\d+)$/.test(raw)) {
+          throw new FormulaError(q(raw) + ' isn\u2019t a valid number. Use one dot for decimals, like 0.15.', i);
+        }
+        out.push({ type: 'num', value: parseFloat(raw), pos: i, end: j }); i = j; continue;
+      }
+      if (/[A-Za-z_]/.test(c)) {
+        var k = i;
+        while (k < s.length && /[A-Za-z0-9_]/.test(s.charAt(k))) k++;
+        out.push({ type: 'name', value: s.slice(i, k), pos: i, end: k }); i = k; continue;
+      }
+      var two = s.substr(i, 2);
+      if (two === '>=' || two === '<=' || two === '==' || two === '!=') {
+        out.push({ type: 'op', value: two, pos: i, end: i + 2 }); i += 2; continue;
+      }
+      if (has(SYMBOLS, c)) {
+        var v = SYMBOLS[c];
+        out.push({ type: (v === '(' || v === ')' || v === ',') ? v : 'op', value: v, pos: i, end: i + 1 });
+        i++; continue;
+      }
+      if (c === '%') throw new FormulaError('Write percentages as decimals (15% is 0.15), or divide by 100.', i);
+      if (c === '=') throw new FormulaError('To compare two values, use == (two equal signs).', i);
+      throw new FormulaError(q(c) + ' can\u2019t be used in a formula. Use + \u2212 \u00d7 \u00f7 and parentheses.', i);
+    }
+    return out;
+  }
+
+  /* Turns tokens into a tree, using normal math order (× ÷ before + −). */
+  function parse(src) {
+    var text = String(src == null ? '' : src);
+    var tokens = tokenize(text), p = 0, end = text.length;
+    if (!tokens.length) throw new FormulaError('This formula is empty.', 0);
+    function peek() { return tokens[p]; }
+    function next() { return tokens[p++]; }
+    function show(v) { return q(PRETTY[v] || v); }
+
+    function comparison() {
+      var left = additive(), t = peek();
+      if (t && t.type === 'op' && /^(>|<|>=|<=|==|!=)$/.test(t.value)) {
+        next();
+        return { kind: 'bin', op: t.value, a: left, b: additive(t.value) };
+      }
+      return left;
+    }
+    function additive(after) {
+      var node = term(after);
+      while (peek() && peek().type === 'op' && (peek().value === '+' || peek().value === '-')) {
+        var op = next().value;
+        node = { kind: 'bin', op: op, a: node, b: term(op) };
+      }
+      return node;
+    }
+    function term(after) {
+      var node = unary(after);
+      while (peek() && peek().type === 'op' && (peek().value === '*' || peek().value === '/')) {
+        var op = next().value;
+        node = { kind: 'bin', op: op, a: node, b: unary(op) };
+      }
+      return node;
+    }
+    function unary(after) {
+      var t = peek();
+      if (t && t.type === 'op' && (t.value === '-' || t.value === '+')) {
+        next();
+        var inner = unary(t.value);
+        return t.value === '-' ? { kind: 'neg', a: inner } : inner;
+      }
+      return primary(after);
+    }
+    function primary(after) {
+      var t = next();
+      if (!t) {
+        throw new FormulaError(after ? 'Something\u2019s missing after ' + show(after) + '.' : 'This formula ends too early.', end);
+      }
+      if (t.type === 'num') return { kind: 'num', value: t.value };
+      if (t.type === 'name') {
+        if (peek() && peek().type === '(') {
+          var fname = t.value.toLowerCase();
+          if (!has(FUNCTIONS, fname)) {
+            throw new FormulaError('There\u2019s no ' + q(t.value) + ' function. You can use min, max, round, abs and if.', t.pos);
+          }
+          next();
+          var args = [];
+          if (peek() && peek().type === ')') { next(); }
+          else {
+            for (;;) {
+              args.push(comparison());
+              var sep = peek();
+              if (sep && sep.type === ',') { next(); continue; }
+              if (sep && sep.type === ')') { next(); break; }
+              throw new FormulaError('Close the parentheses after ' + fname + '(\u2026).', sep ? sep.pos : end);
+            }
+          }
+          var spec = FUNCTIONS[fname];
+          if (fname === 'if' && args.length !== 3) {
+            throw new FormulaError('if needs three parts: if(condition, value when true, value when false).', t.pos);
+          }
+          if (args.length < spec.minArgs) throw new FormulaError(fname + ' needs at least one value inside the parentheses.', t.pos);
+          if (args.length > spec.maxArgs) {
+            throw new FormulaError(fname === 'round'
+              ? 'round takes a value and, optionally, the number of decimals: round(value, 2).'
+              : fname + ' takes only ' + spec.maxArgs + ' value' + (spec.maxArgs > 1 ? 's' : '') + '.', t.pos);
+          }
+          return { kind: 'call', name: fname, args: args, pos: t.pos };
+        }
+        return { kind: 'name', name: t.value, pos: t.pos, end: t.end };
+      }
+      if (t.type === '(') {
+        var inner = comparison();
+        var close = peek();
+        if (!close || close.type !== ')') throw new FormulaError('A parenthesis was opened but never closed.', close ? close.pos : end);
+        next();
+        return inner;
+      }
+      if (t.type === ')') throw new FormulaError('There\u2019s a closing parenthesis without an opening one.', t.pos);
+      if (t.type === ',') throw new FormulaError('Commas only go inside min(), max(), round() and if().', t.pos);
+      throw new FormulaError('Something\u2019s missing before ' + show(t.value) + '.', t.pos);
+    }
+
+    var tree = comparison();
+    if (p < tokens.length) {
+      var extra = tokens[p];
+      if (extra.type === ')') throw new FormulaError('There\u2019s a closing parenthesis without an opening one.', extra.pos);
+      throw new FormulaError('Add an operator (+ \u2212 \u00d7 \u00f7) before ' + show(extra.value) + '.', extra.pos);
+    }
+    return tree;
+  }
+
+  /* Calculates a tree. Returns null when a value is missing or a division by zero happens. */
+  function evaluate(node, scope) {
+    switch (node.kind) {
+      case 'num': return node.value;
+      case 'name': {
+        var v = has(scope, node.name) ? scope[node.name] : null;
+        return (typeof v === 'number' && isFinite(v)) ? v : null;
+      }
+      case 'neg': {
+        var a = evaluate(node.a, scope);
+        return a == null ? null : -a;
+      }
+      case 'bin': {
+        var x = evaluate(node.a, scope), y = evaluate(node.b, scope);
+        if (x == null || y == null) return null;
+        switch (node.op) {
+          case '+': return x + y;
+          case '-': return x - y;
+          case '*': return x * y;
+          case '/': return y === 0 ? null : x / y;
+          case '>': return x > y ? 1 : 0;
+          case '<': return x < y ? 1 : 0;
+          case '>=': return x >= y ? 1 : 0;
+          case '<=': return x <= y ? 1 : 0;
+          case '==': return Math.abs(x - y) < 1e-9 ? 1 : 0;
+          case '!=': return Math.abs(x - y) < 1e-9 ? 0 : 1;
+        }
+        return null;
+      }
+      case 'call': {
+        if (node.name === 'if') {
+          // Only the branch that applies is calculated, so the other one can be empty.
+          var cond = evaluate(node.args[0], scope);
+          if (cond == null) return null;
+          return evaluate(node.args[cond ? 1 : 2], scope);
+        }
+        var vals = [];
+        for (var i = 0; i < node.args.length; i++) {
+          var r = evaluate(node.args[i], scope);
+          if (r == null) return null;
+          vals.push(r);
+        }
+        if (node.name === 'min') return Math.min.apply(Math, vals);
+        if (node.name === 'max') return Math.max.apply(Math, vals);
+        if (node.name === 'abs') return Math.abs(vals[0]);
+        if (node.name === 'round') {
+          var f = Math.pow(10, Math.max(0, Math.min(8, Math.round(vals[1] || 0))));
+          return Math.round(vals[0] * f) / f;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /* Lists the names a formula uses. */
+  function names(node, out) {
+    out = out || [];
+    if (!node) return out;
+    if (node.kind === 'name' && out.indexOf(node.name) < 0) out.push(node.name);
+    if (node.a) names(node.a, out);
+    if (node.b) names(node.b, out);
+    if (node.args) node.args.forEach(function (n) { names(n, out); });
+    return out;
+  }
+
+  function distance(a, b) {
+    var m = [], i, j;
+    for (i = 0; i <= a.length; i++) m[i] = [i];
+    for (j = 0; j <= b.length; j++) m[0][j] = j;
+    for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) {
+      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return m[a.length][b.length];
+  }
+
+  /* Checks a formula against the names it is allowed to use. Plain-language result. */
+  function check(expr, known) {
+    var tree;
+    try { tree = parse(expr); }
+    catch (e) { if (e instanceof FormulaError) return { ok: false, message: e.message, pos: e.pos }; throw e; }
+    var refs = names(tree), list = Object.keys(known || {});
+    for (var i = 0; i < refs.length; i++) {
+      var r = refs[i];
+      if (has(known, r)) continue;
+      var best = null, bestD = Infinity;
+      list.forEach(function (n) {
+        var d = n.toLowerCase() === r.toLowerCase() ? 0 : distance(n.toLowerCase(), r.toLowerCase());
+        if (d < bestD) { bestD = d; best = n; }
+      });
+      var close = best && bestD <= Math.max(2, Math.floor(r.length / 3));
+      return {
+        ok: false, unknown: r,
+        message: q(r) + ' isn\u2019t a field or assumption.' + (close ? ' Did you mean ' + q(best) + '?' : '')
+      };
+    }
+    return { ok: true, tree: tree, refs: refs };
+  }
+
+  var cache = Object.create(null);
+  function compiled(expr) {
+    var key = String(expr);
+    if (!(key in cache)) {
+      try { cache[key] = { tree: parse(key) }; } catch (e) { cache[key] = { error: e }; }
+    }
+    return cache[key];
+  }
+  function run(expr, scope) {
+    if (expr == null || String(expr).trim() === '') return null;
+    if (typeof expr === 'number') return isFinite(expr) ? expr : null;
+    var c = compiled(expr);
+    return c.tree ? evaluate(c.tree, scope) : null;
+  }
+
+  /* -------------------------------------------------------------------------
+     2. MODEL — turns the config + what the visitor typed into results
+     ------------------------------------------------------------------------- */
+  function toNum(v) {
+    if (v === '' || v == null || typeof v === 'boolean') return null;
+    var n = typeof v === 'number' ? v : parseFloat(v);
+    return isFinite(n) ? n : null;
+  }
+  function findOption(field, id) {
+    var opts = field.options || [];
+    for (var i = 0; i < opts.length; i++) if (String(opts[i].id) === String(id)) return opts[i];
+    return null;
+  }
+  function defaults(config) {
+    var v = {};
+    (config.inputs || []).forEach(function (f) {
+      if (f.type === 'toggle') v[f.id] = !!f['default'];
+      else if (f.type === 'cards' || f.type === 'segmented') {
+        var o = findOption(f, f['default']) || (f.options || [])[0];
+        v[f.id] = o ? o.id : null;
+      } else v[f.id] = toNum(f['default']);
+    });
+    return v;
+  }
+  function isVisible(field, scope) {
+    if (!field.showIf) return true;
+    return !!run(field.showIf, scope);
+  }
+  function compute(config, values) {
+    values = values || defaults(config);
+    var scope = Object.create(null), missing = [];
+    var inputs = config.inputs || [];
+    inputs.forEach(function (f) {
+      var v = values[f.id];
+      if (f.type === 'toggle') scope[f.id] = v ? 1 : 0;
+      else if (f.type === 'cards' || f.type === 'segmented') {
+        var o = findOption(f, v);
+        scope[f.id] = o ? toNum(o.value) : null;
+      } else scope[f.id] = toNum(v);
+    });
+    (config.constants || []).forEach(function (c) { scope[c.id] = toNum(c.value); });
+    // Empty or zero fields that the visitor still needs to fill in.
+    inputs.forEach(function (f) {
+      if (f.type !== 'number' && f.type !== 'slider') return;
+      if (f.required === false || !isVisible(f, scope)) return;
+      var v = scope[f.id];
+      if (v == null || (v === 0 && !f.allowZero)) missing.push(f.label || f.id);
+    });
+    (config.steps || []).forEach(function (s) { scope[s.id] = run(s.expr, scope); });
+    var F = config.formulas || {};
+    var benefit = run(F.benefit, scope), cost = run(F.cost, scope), investment = run(F.investment, scope);
+    var net = (benefit != null && cost != null) ? benefit - cost : null;
+    var roi = (net != null && cost != null && cost > 0) ? net / cost : null;
+    var perMonth = (config.content && config.content.period === 'month') ? 1 : 12;
+    var payback = null, never = false;
+    if (investment != null && investment > 0) {
+      // A one-time investment, paid back by the net gain.
+      if (net != null) { if (net > 0) payback = investment / (net / perMonth); else never = true; }
+    } else if (cost != null && cost > 0 && benefit != null) {
+      // No upfront cost: how long the gain takes to cover one period of cost.
+      if (benefit > 0) payback = cost / (benefit / perMonth); else never = true;
+    }
+    scope.benefit = benefit; scope.cost = cost; scope.net = net; scope.roi = roi;
+    scope.payback = payback; scope.investment = investment;
+    var empty = missing.length > 0 || net == null;
+    return { scope: scope, missing: missing, empty: empty, negative: !empty && net < 0, paybackNever: never };
+  }
+
+  /* -------------------------------------------------------------------------
+     3. NUMBER FORMATTING (uses the visitor's chosen currency and locale)
+     ------------------------------------------------------------------------- */
+  function formatter(config) {
+    var fmt = config.format || {}, locale = fmt.locale || 'en-US', currency = fmt.currency || 'USD';
+    var dec = fmt.decimals || {};
+    function nf(o) { try { return new Intl.NumberFormat(locale, o); } catch (e) { return new Intl.NumberFormat('en-US', o); } }
+    function clean(v) { return Math.abs(v) < 0.005 ? 0 : v; }
+    var parts = nf({ style: 'currency', currency: currency }).formatToParts(1);
+    var symbol = '$', first = true, seenNumber = false;
+    parts.forEach(function (p) {
+      if (p.type === 'currency') { symbol = p.value; first = !seenNumber; }
+      if (p.type === 'integer') seenNumber = true;
+    });
+    return {
+      symbol: symbol, symbolFirst: first,
+      currency: function (v) {
+        v = clean(v);
+        var cents = Math.abs(v) < 10 && Math.round(Math.abs(v) * 100) % 100 !== 0;
+        var d = cents ? 2 : (dec.currency || 0);
+        return nf({ style: 'currency', currency: currency, minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+      },
+      number: function (v) {
+        v = clean(v);
+        var a = Math.abs(v), d = dec.number || 0;
+        if (a < 10) d = Math.max(d, 2); else if (a < 100) d = Math.max(d, 1);
+        return nf({ maximumFractionDigits: d }).format(v);
+      },
+      percent: function (v) { return nf({ style: 'percent', maximumFractionDigits: dec.percent || 0 }).format(clean(v)); },
+      months: function (v) {
+        if (v < 1) return 'under a month';
+        var r = v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
+        return nf({ maximumFractionDigits: 1 }).format(r) + (r === 1 ? ' month' : ' months');
+      }
+    };
+  }
+
+  /* What kind of number a name holds, so it is shown the right way. */
+  function kindOf(config, name) {
+    if (name === 'benefit' || name === 'cost' || name === 'net' || name === 'investment') return { format: 'currency' };
+    if (name === 'roi') return { format: 'percent' };
+    if (name === 'payback') return { format: 'months' };
+    var i, list = config.steps || [];
+    for (i = 0; i < list.length; i++) if (list[i].id === name) return { format: list[i].format || 'number', unit: list[i].unit };
+    list = config.inputs || [];
+    for (i = 0; i < list.length; i++) if (list[i].id === name) {
+      var f = list[i];
+      if (f.prefix === 'currency') return { format: 'currency' };
+      return { format: 'number', unit: f.unit };
+    }
+    list = config.constants || [];
+    for (i = 0; i < list.length; i++) if (list[i].id === name) return { format: 'number', unit: list[i].unit };
+    return { format: 'number' };
+  }
+  function show(F, kind, v, withUnit) {
+    if (v == null) return '\u2014';
+    var f = (kind && kind.format) || 'number';
+    var out = f === 'currency' ? F.currency(v) : f === 'percent' ? F.percent(v) : f === 'months' ? F.months(v) : F.number(v);
+    if (withUnit && kind && kind.unit && f === 'number') out += (/^[%/]/.test(kind.unit) ? '' : ' ') + kind.unit;
+    return out;
+  }
+  /* Fills {name} placeholders in a text with live values. */
+  function fill(text, config, res, F) {
+    var hasNull = false;
+    var out = String(text || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function (m, name) {
+      if (name === 'period') return (config.content && config.content.period) || 'year';
+      if (!(name in res.scope)) return m;
+      var v = res.scope[name];
+      if (v == null) { hasNull = true; return '\u2014'; }
+      return show(F, kindOf(config, name), v, false);
+    });
+    return { text: out, hasNull: hasNull };
+  }
+  function safeUrl(u) {
+    u = String(u || '').trim();
+    return /^(https?:|mailto:|tel:|\/|#)/i.test(u) ? u : '#';
+  }
+  function joinList(items) {
+    if (items.length < 2) return items.join('');
+    return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+  }
+
+  /* -------------------------------------------------------------------------
+     4. RENDERER — builds accessible HTML for the calculator
+     ------------------------------------------------------------------------- */
+  var count = 0;
+  function mount(root, config, options) {
+    options = options || {};
+    var doc = root.ownerDocument || document;
+    var win = doc.defaultView || window;
+    var uid = 'rc' + (++count);
+    var values = defaults(config), prevDefaults = defaults(config), prevTypes = typesOf(config);
+    var activeUnit = {}, els = {}, lastHero = null, lastKey = null, tween = 0, liveTimer = 0;
+    var reduceMotion = !!(win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    function typesOf(c) { var t = {}; (c.inputs || []).forEach(function (f) { t[f.id] = f.type; }); return t; }
+
+    /* Tiny element helper. Text always goes in as text, never as HTML. */
+    function h(tag, attrs, kids) {
+      var e = doc.createElement(tag);
+      if (attrs) Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k === 'class') e.className = v;
+        else if (k === 'text') e.textContent = v;
+        else if (k === 'for') e.htmlFor = v;
+        else e.setAttribute(k, v === true ? '' : v);
+      });
+      (kids || []).forEach(function (kid) { if (kid) e.appendChild(kid); });
+      return e;
+    }
+
+    function constScope() {
+      var s = Object.create(null);
+      (config.constants || []).forEach(function (c) { s[c.id] = toNum(c.value); });
+      return s;
+    }
+    function niceRound(x, step) {
+      if (x == null) return '';
+      var st = parseFloat(step);
+      if (isFinite(st) && st > 0) x = Math.round(x / st) * st;
+      return String(Number(x.toFixed(6)));
+    }
+
+    function buildField(f) {
+      var id = uid + '-' + f.id, helpId = id + '-help';
+      var help = h('p', { 'class': 'rc-help', id: helpId });
+      var el, refresh;
+
+      if (f.type === 'toggle') {
+        var box = h('input', { type: 'checkbox', role: 'switch', id: id, 'class': 'rc-switch-input', 'aria-describedby': helpId });
+        box.addEventListener('change', function () { values[f.id] = box.checked; render(); });
+        var labelId = id + '-label';
+        el = h('div', { 'class': 'rc-field', role: 'group', 'aria-labelledby': f.label ? labelId : null }, [
+          f.label ? h('span', { 'class': 'rc-label', id: labelId, text: f.label }) : null,
+          h('label', { 'class': 'rc-switch', 'for': id }, [
+            box, h('span', { 'class': 'rc-switch-track', 'aria-hidden': 'true' }),
+            h('span', { 'class': 'rc-switch-text', text: f.toggleLabel || f.label || '' })
+          ]),
+          help
+        ]);
+        refresh = function () { box.checked = !!values[f.id]; };
+      } else if (f.type === 'cards' || f.type === 'segmented') {
+        var isCards = f.type === 'cards';
+        var group = h('div', { 'class': isCards ? 'rc-cards' : 'rc-seg' });
+        var radios = [];
+        (f.options || []).forEach(function (o, i) {
+          var r = h('input', { type: 'radio', 'class': 'rc-sr', name: id, id: id + '-' + i, value: String(o.id) });
+          r.addEventListener('change', function () { if (r.checked) { values[f.id] = o.id; render(); } });
+          radios.push(r);
+          var kids = isCards
+            ? [r,
+               h('span', { 'class': 'rc-card-head' }, [
+                 h('span', { 'class': 'rc-card-title', text: o.label || '' }),
+                 o.badge ? h('span', { 'class': 'rc-card-badge', text: o.badge }) : null
+               ]),
+               o.description ? h('span', { 'class': 'rc-card-desc', text: o.description }) : null]
+            : [r, h('span', { text: o.label || '' })];
+          group.appendChild(h('label', { 'class': isCards ? 'rc-card' : 'rc-seg-item', 'for': r.id }, kids));
+        });
+        el = h('fieldset', { 'class': 'rc-field', 'aria-describedby': helpId }, [
+          h('legend', { 'class': 'rc-label', text: f.label || '' }), group, help
+        ]);
+        refresh = function () { radios.forEach(function (r) { r.checked = String(values[f.id]) === r.value; }); };
+      } else {
+        // Number and slider fields. Values are always stored in the base unit.
+        var units = Array.isArray(f.units) && f.units.length > 1 ? f.units : null;
+        if (!units || activeUnit[f.id] == null || activeUnit[f.id] >= units.length) activeUnit[f.id] = 0;
+        var F = formatter(config);
+        var input = h('input', { type: 'number', id: id, 'class': 'rc-input', inputmode: 'decimal', 'aria-describedby': helpId });
+        var money = f.prefix === 'currency';
+        var pre = money && F.symbolFirst ? h('span', { 'class': 'rc-affix', 'aria-hidden': 'true', text: F.symbol }) : null;
+        var suf = h('span', { 'class': 'rc-affix', 'aria-hidden': 'true' });
+        var range = f.type === 'slider' ? h('input', { type: 'range', 'class': 'rc-range', 'aria-label': (f.label || '') + ', slider' }) : null;
+        var unitBtns = [], unitSwitch = null;
+        var factor = function () {
+          if (!units) return 1;
+          var fac = units[activeUnit[f.id]].factor;
+          fac = typeof fac === 'string' ? run(fac, constScope()) : toNum(fac);
+          return fac && fac > 0 ? fac : 1;
+        };
+        var unitLabel = function () { return units ? units[activeUnit[f.id]].label : (f.unit || ''); };
+        var stepFor = function () {
+          if (units && units[activeUnit[f.id]].step != null) return units[activeUnit[f.id]].step;
+          return f.step != null && f.step !== '' ? f.step : 'any';
+        };
+        if (units) {
+          unitSwitch = h('div', { 'class': 'rc-unit-switch', role: 'group', 'aria-label': (f.label || '') + ' unit' });
+          units.forEach(function (u, i) {
+            var b = h('button', { type: 'button', 'class': 'rc-unit', text: u.label || '' });
+            b.addEventListener('click', function () { activeUnit[f.id] = i; refresh(); render(); });
+            unitBtns.push(b); unitSwitch.appendChild(b);
+          });
+        }
+        var setFill = function () {
+          if (!range) return;
+          var mn = parseFloat(range.min), mx = parseFloat(range.max), v = parseFloat(range.value);
+          var pct = mx > mn ? Math.max(0, Math.min(100, (v - mn) / (mx - mn) * 100)) : 0;
+          range.style.setProperty('--rc-fill', pct + '%');
+        };
+        refresh = function () {
+          var fac = factor(), base = values[f.id], st = stepFor();
+          var shown = base == null ? '' : niceRound(base / fac, st);
+          if (doc.activeElement !== input) input.value = shown;
+          input.step = st;
+          if (f.min != null && f.min !== '') input.min = niceRound(f.min / fac); else input.removeAttribute('min');
+          if (f.max != null && f.max !== '') input.max = niceRound(f.max / fac); else input.removeAttribute('max');
+          var u = unitLabel();
+          suf.textContent = (money && !F.symbolFirst ? F.symbol + (u ? ' ' : '') : '') + u;
+          suf.hidden = !suf.textContent;
+          if (range) {
+            var mn = (f.min != null && f.min !== '' ? f.min : 0) / fac, mx = (f.max != null && f.max !== '' ? f.max : 100) / fac;
+            range.min = niceRound(mn); range.max = niceRound(mx);
+            range.step = st === 'any' ? String((mx - mn) / 200) : st;
+            if (doc.activeElement !== range) range.value = shown === '' ? range.min : shown;
+            setFill();
+          }
+          unitBtns.forEach(function (b, i) { b.setAttribute('aria-pressed', String(i === activeUnit[f.id])); });
+        };
+        input.addEventListener('input', function () {
+          var raw = input.value.trim(), n = parseFloat(raw);
+          values[f.id] = raw === '' || !isFinite(n) ? null : n * factor();
+          if (range && isFinite(n)) { range.value = n; setFill(); }
+          render();
+        });
+        input.addEventListener('blur', refresh);
+        if (range) range.addEventListener('input', function () {
+          var n = parseFloat(range.value);
+          values[f.id] = n * factor();
+          input.value = niceRound(n, stepFor());
+          setFill();
+          render();
+        });
+        el = h('div', { 'class': 'rc-field' }, [
+          h('div', { 'class': 'rc-label-row' }, [h('label', { 'class': 'rc-label', 'for': id, text: f.label || '' }), unitSwitch]),
+          h('div', { 'class': 'rc-input-wrap' }, [pre, input, suf]),
+          range, help
+        ]);
+      }
+      return { el: el, help: help, refresh: refresh };
+    }
+
+    function build() {
+      root.textContent = '';
+      var c = config.content || {}, t = config.theme || {};
+      var layout = /^(split|stacked|compact)$/.test(t.layout) ? t.layout : 'split';
+      var wrap = h('div', { 'class': 'rc rc--' + layout });
+      var body = h('div', { 'class': 'rc-body' });
+      var form = h('div', { 'class': 'rc-inputs' });
+      if (t.logo && /^data:image\//.test(t.logo)) form.appendChild(h('img', { 'class': 'rc-logo', src: t.logo, alt: '' }));
+      form.appendChild(h('h2', { 'class': 'rc-title', text: c.title || '' }));
+      if (c.description) form.appendChild(h('p', { 'class': 'rc-desc', text: c.description }));
+      var fields = h('div', { 'class': 'rc-fields' });
+      els.fields = {};
+      (config.inputs || []).forEach(function (f) {
+        var node = buildField(f);
+        els.fields[f.id] = node;
+        fields.appendChild(node.el);
+      });
+      form.appendChild(fields);
+
+      els.eyebrow = h('p', { 'class': 'rc-eyebrow', id: uid + '-result' });
+      els.hero = h('p', { 'class': 'rc-hero' });
+      els.sentence = h('p', { 'class': 'rc-sentence' });
+      els.hint = h('p', { 'class': 'rc-hint' });
+      els.rows = h('dl', { 'class': 'rc-breakdown' });
+      els.cta = h('a', { 'class': 'rc-cta' });
+      els.disclaimer = h('p', { 'class': 'rc-disclaimer' });
+      // Screen readers hear one calm summary after the visitor stops typing.
+      els.live = h('p', { 'class': 'rc-sr', 'aria-live': 'polite', 'aria-atomic': 'true' });
+      var result = h('section', { 'class': 'rc-result', 'aria-labelledby': uid + '-result' }, [
+        els.eyebrow, els.hero, els.sentence, els.hint, els.rows, els.cta, els.disclaimer, els.live
+      ]);
+      body.appendChild(form);
+      body.appendChild(result);
+      wrap.appendChild(body);
+      root.appendChild(wrap);
+      lastHero = null;
+      render(true);
+    }
+
+    function setHero(value, key, F) {
+      var kind = kindOf(config, key);
+      var fmt = function (v) { return show(F, kind, v, false); };
+      if (tween) { (win.cancelAnimationFrame || clearTimeout)(tween); tween = 0; }
+      if (value == null) { els.hero.textContent = '\u2014'; lastHero = null; lastKey = key; return; }
+      if (reduceMotion || lastHero == null || lastKey !== key || key === 'payback' || !win.requestAnimationFrame) {
+        els.hero.textContent = fmt(value); lastHero = value; lastKey = key; return;
+      }
+      var from = lastHero, to = value, t0 = null, dur = 360;
+      lastHero = value; lastKey = key;
+      var step = function (now) {
+        if (t0 == null) t0 = now;
+        var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        els.hero.textContent = fmt(p < 1 ? from + (to - from) * e : to);
+        tween = p < 1 ? win.requestAnimationFrame(step) : 0;
+      };
+      tween = win.requestAnimationFrame(step);
+    }
+
+    var HERO_LABELS = {
+      net: 'Estimated net gain per {period}*', roi: 'Estimated return on investment*',
+      benefit: 'Estimated total gain per {period}*', payback: 'Pays for itself in*'
+    };
+
+    function render() {
+      var res = compute(config, values), F = formatter(config);
+      var c = config.content || {}, out = config.outputs || {}, states = out.states || {};
+      (config.inputs || []).forEach(function (f) {
+        var node = els.fields[f.id];
+        if (!node) return;
+        node.el.hidden = !isVisible(f, res.scope);
+        node.refresh();
+        var src = f.help;
+        if (src && typeof src === 'object') src = values[f.id] ? src.on : src.off;
+        var txt = src ? fill(src, config, res, F).text : '';
+        node.help.textContent = txt;
+        node.help.hidden = !txt;
+      });
+
+      var key = /^(net|roi|benefit|payback)$/.test(out.hero) ? out.hero : 'net';
+      els.eyebrow.textContent = fill(out.heroLabel || HERO_LABELS[key], config, res, F).text;
+      var heroVal = res.empty ? null : res.scope[key];
+      if (key === 'payback' && !res.empty && res.paybackNever) { setHero(null, key, F); els.hero.textContent = 'Not yet'; }
+      else setHero(heroVal, key, F);
+      els.hero.classList.toggle('rc-is-negative', res.negative && (key === 'net' || key === 'roi'));
+      els.hero.classList.toggle('rc-is-empty', heroVal == null);
+
+      var sentence = out.heroSentence ? fill(out.heroSentence, config, res, F) : null;
+      els.sentence.textContent = sentence ? sentence.text : '';
+      els.sentence.hidden = !sentence || sentence.hasNull || res.empty;
+
+      var hint = '';
+      if (res.empty) {
+        hint = states.empty || 'Fill in the fields to see your estimate.';
+        if (res.missing.length) hint += ' Still needed: ' + joinList(res.missing) + '.';
+      } else if (res.negative) {
+        hint = states.negative || 'With these numbers the cost is higher than the gain. Try adjusting the values.';
+      }
+      els.hint.textContent = hint;
+      els.hint.hidden = !hint;
+      els.hint.classList.toggle('rc-hint--negative', !res.empty && res.negative);
+
+      els.rows.textContent = '';
+      var rows = (out.breakdown || []).slice();
+      if (out.payback && out.payback.enabled) rows.push({ label: 'Pays for itself in', value: 'payback' });
+      rows.forEach(function (row) {
+        var expr = String(row.value == null ? '' : row.value).trim();
+        var simple = /^[A-Za-z_][A-Za-z0-9_]*$/.test(expr);
+        var kind = row.format && row.format !== 'auto' ? { format: row.format } : (simple ? kindOf(config, expr) : { format: 'currency' });
+        var v = res.empty ? null : (simple ? (expr in res.scope ? res.scope[expr] : null) : run(expr, res.scope));
+        var text = (expr === 'payback' && !res.empty && res.paybackNever) ? 'Not yet' : show(F, kind, v, true);
+        els.rows.appendChild(h('div', { 'class': 'rc-row' }, [
+          h('dt', { text: fill(row.label || '', config, res, F).text }),
+          h('dd', { text: text })
+        ]));
+      });
+      els.rows.hidden = !els.rows.children.length;
+
+      if (c.cta && c.cta.label) {
+        els.cta.textContent = c.cta.label;
+        els.cta.href = safeUrl(c.cta.url);
+        if (c.cta.newTab) { els.cta.target = '_blank'; els.cta.rel = 'noopener'; }
+        else { els.cta.removeAttribute('target'); els.cta.removeAttribute('rel'); }
+        els.cta.hidden = false;
+      } else els.cta.hidden = true;
+      els.disclaimer.textContent = c.disclaimer || '';
+      els.disclaimer.hidden = !c.disclaimer;
+
+      clearTimeout(liveTimer);
+      liveTimer = setTimeout(function () {
+        if (res.empty) { els.live.textContent = hint; return; }
+        var heroText = key === 'payback' && res.paybackNever ? 'Not yet' : show(F, kindOf(config, key), res.scope[key], false);
+        els.live.textContent = els.eyebrow.textContent.replace(/\*$/, '') + ': ' + heroText + '. ' +
+          (els.sentence.hidden ? '' : els.sentence.textContent + ' ') + (res.negative ? hint : '');
+      }, 700);
+      if (options.onChange) options.onChange(res);
+    }
+
+    build();
+    return {
+      /* Swap in a new config. Values the visitor changed are kept when they still fit. */
+      update: function (next) {
+        config = next;
+        var d = defaults(config), types = typesOf(config);
+        Object.keys(d).forEach(function (k) {
+          var stale = !(k in values) || types[k] !== prevTypes[k] || d[k] !== prevDefaults[k];
+          var f = (config.inputs || []).filter(function (x) { return x.id === k; })[0];
+          if (f && (f.type === 'cards' || f.type === 'segmented') && !findOption(f, values[k])) stale = true;
+          if (stale) values[k] = d[k];
+        });
+        prevDefaults = d; prevTypes = types;
+        build();
+      },
+      reset: function () { values = defaults(config); build(); },
+      values: function () { return values; },
+      destroy: function () { clearTimeout(liveTimer); root.textContent = ''; }
+    };
+  }
+
+  return {
+    version: '1',
+    mount: mount, compute: compute, defaults: defaults,
+    tokenize: tokenize, parse: parse, evaluate: evaluate, names: names, check: check,
+    formatter: formatter, kindOf: kindOf, show: show,
+    FormulaError: FormulaError, FUNCTIONS: FUNCTIONS, RESERVED: RESERVED, PRETTY: PRETTY
+  };
+}
+
+/* ===========================================================================
+   CALCULATOR STYLES (shared by the preview and every export)
+   Every color, the font and the corners come from --rc-* variables.
+   =========================================================================== */
+const RC_CSS = `.rc {
+  container-type: inline-size;
+  font-family: var(--rc-font);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--rc-text);
+  background: var(--rc-bg);
+  border-radius: var(--rc-radius-outer, 0);
+  -webkit-font-smoothing: antialiased;
+}
+.rc *, .rc *::before, .rc *::after { box-sizing: border-box; }
+.rc [hidden] { display: none !important; }
+
+/* Layout */
+.rc-body { display: grid; gap: 24px; padding: 20px; }
+.rc-inputs { container-type: inline-size; container-name: rcinputs; min-width: 0; }
+@container (min-width: 620px) {
+  .rc--split .rc-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; padding: 32px; align-items: start; }
+  .rc--split .rc-result { position: sticky; top: 16px; }
+}
+@container (min-width: 520px) { .rc--stacked .rc-body { padding: 32px; } }
+
+/* Heading */
+.rc-logo { display: block; max-height: 36px; max-width: 160px; margin: 0 0 16px; object-fit: contain; }
+.rc-title { margin: 0 0 8px; font-size: clamp(1.5rem, 4.4cqi, 2.15rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
+.rc-desc { margin: 0 0 22px; color: var(--rc-muted); max-width: 52ch; }
+
+/* Fields */
+.rc-fields { display: grid; gap: 22px; }
+.rc-field { margin: 0; padding: 0; border: 0; min-width: 0; }
+.rc-field > :not(:first-child) { margin-top: 8px; }
+.rc-label { display: block; padding: 0; font-weight: 600; font-size: 0.94em; }
+legend.rc-label { margin-bottom: 8px; }
+.rc-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rc-help { margin: 0; color: var(--rc-muted); font-size: 0.84em; }
+.rc-input-wrap {
+  display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px;
+  background: var(--rc-field); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-sm);
+}
+.rc-input-wrap:focus-within { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+.rc-input {
+  flex: 1; min-width: 0; padding: 10px 0; border: 0; background: transparent;
+  font: inherit; color: inherit; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield;
+}
+.rc-input:focus { outline: none; }
+.rc-input::-webkit-outer-spin-button, .rc-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rc-affix { color: var(--rc-muted); font-size: 0.9em; white-space: nowrap; }
+
+/* Slider */
+.rc-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 26px; margin: 0; background: transparent; cursor: pointer; }
+.rc-range::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--rc-select-border) var(--rc-fill, 50%), var(--rc-border) var(--rc-fill, 50%)); }
+.rc-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; margin-top: -8px;
+  background: var(--rc-select); border: 2px solid var(--rc-select-border); border-radius: var(--rc-radius-thumb);
+}
+.rc-range::-moz-range-track { height: 2px; background: var(--rc-border); }
+.rc-range::-moz-range-progress { height: 2px; background: var(--rc-select-border); }
+.rc-range::-moz-range-thumb { width: 14px; height: 14px; background: var(--rc-select); border: 2px solid var(--rc-select-border); border-radius: var(--rc-radius-thumb); }
+.rc-range:focus-visible { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+
+/* Unit switch (kW / panels) */
+.rc-unit-switch { display: inline-flex; padding: 2px; background: var(--rc-field); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-sm); }
+.rc-unit { font: inherit; font-size: 0.82em; color: var(--rc-text); background: transparent; border: 0; padding: 3px 10px; border-radius: var(--rc-radius-thumb); cursor: pointer; }
+.rc-unit[aria-pressed="true"] { background: var(--rc-select); color: var(--rc-on-select); }
+.rc-unit:focus-visible { outline: 2px solid var(--rc-focus); outline-offset: 1px; }
+
+/* On/off switch */
+.rc-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; font-size: 0.9em; cursor: pointer; }
+.rc-switch-input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.rc-switch-track { position: relative; flex: none; width: 38px; height: 22px; border-radius: 999px; background: var(--rc-field); border: 1.5px solid var(--rc-muted); transition: background 0.15s, border-color 0.15s; }
+.rc-switch-track::after { content: ""; position: absolute; top: 2.5px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--rc-muted); transition: transform 0.15s, background 0.15s; }
+.rc-switch-input:checked + .rc-switch-track { background: var(--rc-select-border); border-color: var(--rc-select-border); }
+.rc-switch-input:checked + .rc-switch-track::after { background: var(--rc-field); }
+.rc-switch-input:checked + .rc-switch-track::after { transform: translateX(16px); }
+.rc-switch-input:focus-visible + .rc-switch-track { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+
+/* Option cards */
+.rc-cards { display: grid; gap: 8px; grid-template-columns: 1fr; }
+@container rcinputs (min-width: 340px) { .rc-cards { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); } }
+.rc-card {
+  position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px; cursor: pointer;
+  background: var(--rc-field); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-sm);
+  transition: border-color 0.15s, background 0.15s;
+}
+.rc-card:hover { border-color: var(--rc-muted); }
+.rc-card:has(input:checked) { background: var(--rc-select-soft); border-color: var(--rc-select-border); box-shadow: inset 0 0 0 1px var(--rc-select-border); }
+.rc-card:has(input:focus-visible) { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+.rc-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.rc-card-title { font-weight: 600; font-size: 0.92em; }
+.rc-card-badge, .rc-card-desc { font-size: 0.82em; color: var(--rc-muted); }
+.rc-card-desc { line-height: 1.35; }
+
+/* Segmented buttons */
+.rc-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--rc-field); border: 1px solid var(--rc-border); border-radius: var(--rc-radius-sm); }
+.rc-seg-item {
+  position: relative; flex: 1 1 0; min-width: fit-content; padding: 8px 10px; text-align: center; cursor: pointer;
+  font-size: 0.9em; font-variant-numeric: tabular-nums; border: 1px solid transparent; border-radius: var(--rc-radius-thumb);
+}
+.rc-seg-item:hover { border-color: var(--rc-border); }
+.rc-seg-item:has(input:checked) { background: var(--rc-select); color: var(--rc-on-select); border-color: var(--rc-select-border); }
+.rc-seg-item:has(input:focus-visible) { outline: 2px solid var(--rc-focus); outline-offset: 1px; }
+
+/* Result panel */
+.rc-result {
+  display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 28px;
+  background: var(--rc-panel); color: var(--rc-on-panel);
+  border: 1px solid var(--rc-panel-rule); border-radius: var(--rc-radius);
+}
+.rc-eyebrow { margin: 0; font-size: 0.86em; color: var(--rc-panel-muted); }
+.rc-hero {
+  margin: 4px 0 0; font-size: clamp(2.75rem, 10cqi, 4.5rem); font-weight: 500; line-height: 1;
+  letter-spacing: -0.02em; color: var(--rc-accent); font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.rc-hero.rc-is-negative { color: var(--rc-negative); }
+.rc-hero.rc-is-empty { color: var(--rc-panel-muted); }
+.rc-sentence { margin: 0; max-width: 40ch; }
+.rc-hint { margin: 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--rc-panel-muted); font-size: 0.9em; }
+.rc-hint--negative { border-left-color: var(--rc-negative); }
+.rc-breakdown { margin: 10px 0 0; padding: 0; border-top: 1px solid var(--rc-panel-rule); }
+.rc-row { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rc-panel-rule); font-size: 0.9em; }
+.rc-row dt { min-width: 0; }
+.rc-row dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rc-cta {
+  align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 6px;
+  padding: 10px 22px; font-weight: 600; text-decoration: none; color: var(--rc-on-cta); background: var(--rc-cta);
+  border-radius: var(--rc-radius-btn); transition: filter 0.15s;
+}
+.rc-cta:hover { filter: brightness(1.07); }
+.rc-cta:focus-visible { outline: 2px solid var(--rc-on-panel); outline-offset: 3px; }
+.rc-disclaimer { margin: 0; font-size: 0.74em; line-height: 1.45; color: var(--rc-panel-muted); }
+.rc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Compact layout */
+.rc--compact { font-size: 14px; }
+.rc--compact .rc-body { gap: 16px; padding: 16px; }
+.rc--compact .rc-fields { gap: 16px 20px; }
+@container rcinputs (min-width: 460px) {
+  .rc--compact .rc-fields { grid-template-columns: 1fr 1fr; }
+  .rc--compact .rc-fields > .rc-field:has(.rc-cards) { grid-column: 1 / -1; }
+}
+.rc--compact .rc-result { padding: 20px; gap: 10px; }
+.rc--compact .rc-hero { font-size: clamp(2.25rem, 7cqi, 3rem); }
+@container (min-width: 560px) { .rc--compact .rc-breakdown { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; } }
+
+@media (prefers-reduced-motion: reduce) { .rc *, .rc *::before, .rc *::after { transition: none !important; animation: none !important; } }`;
+
+/* ===========================================================================
+   BUILDER LIBRARY: templates, color system, fonts, exports
+   =========================================================================== */
+const ROICalc = ROICalcRuntime();
+const RUNTIME_SOURCE = ROICalcRuntime.toString();
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const today = () => new Date().toISOString().slice(0, 10);
+
+/* ---------- Templates: each one ships fields, math and copy ---------- */
+const DISCLAIMER_GENERIC = '*Estimate only, based on the numbers entered and typical averages. Real results vary.';
+const STATES = (empty, negative) => ({ empty, negative });
+
+const TEMPLATES = [
+  {
+    id: 'solar-cleaning', name: 'Solar panel cleaning',
+    desc: 'Energy and money a cleaning brings back each year.',
+    build: () => ({
+      content: {
+        title: 'What is a cleaning worth?',
+        description: 'Enter your panel details to estimate how much energy and money a cleaning brings back each year.',
+        cta: { label: 'Request a quote', url: 'https://example.com/quote', newTab: true },
+        disclaimer: '*Estimate only. Assumes dirt builds up evenly between cleanings and each cleaning restores full output. Real results vary with location, weather, panel tilt and shading.',
+        period: 'year'
+      },
+      inputs: [
+        { id: 'systemSize', label: 'System size', type: 'slider', default: 9, min: 1, max: 50, step: 0.5,
+          units: [{ label: 'kW', factor: 1 }, { label: 'panels', factor: 'kwPerPanel', step: 1 }] },
+        { id: 'knowsProduction', label: 'Annual production', type: 'toggle', toggleLabel: 'I know my annual production', default: false,
+          help: { off: 'Estimated from system size: {production} kWh a year', on: '' } },
+        { id: 'annualProduction', label: 'Annual production', type: 'number', unit: 'kWh', default: 13440, min: 0, step: 10,
+          showIf: 'knowsProduction', help: 'Check your inverter app or last year\u2019s utility bills.' },
+        { id: 'rate', label: 'Electricity rate', type: 'number', prefix: 'currency', unit: '/kWh', default: 0.22, min: 0, step: 0.01 },
+        { id: 'costPerCleaning', label: 'Cost per cleaning', type: 'number', prefix: 'currency', default: 125, min: 0, step: 5 },
+        { id: 'dirtLoss', label: 'How dirty do your panels get?', type: 'cards', default: 'moderate', options: [
+          { id: 'light', label: 'Light', badge: '~5% loss', description: 'Occasional dust or pollen, regular rain', value: 0.05 },
+          { id: 'moderate', label: 'Moderate', badge: '~15% loss', description: 'Dust, bird droppings, nearby roads', value: 0.15 },
+          { id: 'heavy', label: 'Heavy', badge: '~25% loss', description: 'Farmland, construction or long dry seasons', value: 0.25 }
+        ] },
+        { id: 'cleanings', label: 'Cleanings per year', type: 'segmented', default: '1', options: [
+          { id: '1', label: '1x', value: 1 }, { id: '2', label: '2x', value: 2 },
+          { id: '3', label: '3x', value: 3 }, { id: '4', label: '4x', value: 4 }
+        ] }
+      ],
+      constants: [
+        { id: 'yieldPerKw', label: 'Average production per kW', value: 1493.33, unit: 'kWh/kW a year' },
+        { id: 'kwPerPanel', label: 'Power per panel', value: 0.4, unit: 'kW' }
+      ],
+      steps: [
+        { id: 'production', label: 'Annual production', expr: 'if(knowsProduction, annualProduction, systemSize \u00d7 yieldPerKw)', format: 'number', unit: 'kWh' },
+        { id: 'energyRecovered', label: 'Energy recovered', expr: 'production \u00d7 dirtLoss \u00d7 cleanings \u00f7 (cleanings + 1)', format: 'number', unit: 'kWh' },
+        { id: 'energyValue', label: 'Value of that energy', expr: 'energyRecovered \u00d7 rate', format: 'currency' }
+      ],
+      formulas: { benefit: 'energyValue', cost: 'costPerCleaning \u00d7 cleanings', investment: '' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated net gain per {period}*',
+        heroSentence: 'A {roi} return on what you spend on cleaning.',
+        breakdown: [
+          { label: 'Energy recovered', value: 'energyRecovered' },
+          { label: 'Value of that energy', value: 'energyValue' },
+          { label: 'Cleaning cost ({cleanings} \u00d7 {costPerCleaning})', value: 'cost' }
+        ],
+        payback: { enabled: false },
+        states: STATES('Add your system size and electricity rate to see your estimate.',
+          'At this size, cleaning costs more than it recovers. Try fewer cleanings per year.')
+      }
+    })
+  },
+  {
+    id: 'maintenance', name: 'Recurring maintenance',
+    desc: 'Repairs and downtime a maintenance plan prevents.',
+    build: () => ({
+      content: {
+        title: 'What does preventive maintenance save you?',
+        description: 'Estimate how much a maintenance plan saves in repairs and downtime each year.',
+        cta: { label: 'Get a maintenance plan', url: 'https://example.com/plans', newTab: true },
+        disclaimer: '*Estimate only. Based on the averages you entered. Real savings depend on equipment age, usage and conditions.',
+        period: 'year'
+      },
+      inputs: [
+        { id: 'units', label: 'Equipment covered', type: 'slider', unit: 'units', default: 10, min: 1, max: 200, step: 1 },
+        { id: 'breakdowns', label: 'Breakdowns per unit each year', type: 'number', default: 2, min: 0, step: 0.5, help: 'Without regular maintenance.' },
+        { id: 'repairCost', label: 'Average repair cost', type: 'number', prefix: 'currency', default: 450, min: 0, step: 10 },
+        { id: 'downtimeCost', label: 'Cost of downtime per breakdown', type: 'number', prefix: 'currency', default: 300, min: 0, step: 10, allowZero: true, help: 'Lost sales, idle staff, rentals.' },
+        { id: 'planLevel', label: 'Maintenance plan', type: 'cards', default: 'standard', options: [
+          { id: 'basic', label: 'Basic', badge: 'prevents ~40%', description: 'Quarterly inspection', value: 0.4 },
+          { id: 'standard', label: 'Standard', badge: 'prevents ~60%', description: 'Monthly inspection and tune-up', value: 0.6 },
+          { id: 'premium', label: 'Premium', badge: 'prevents ~80%', description: 'Monthly visits and priority repairs', value: 0.8 }
+        ] },
+        { id: 'planPrice', label: 'Plan price per unit each month', type: 'number', prefix: 'currency', default: 25, min: 0, step: 1 }
+      ],
+      constants: [],
+      steps: [
+        { id: 'avoided', label: 'Breakdowns avoided', expr: 'units \u00d7 breakdowns \u00d7 planLevel', format: 'number', unit: 'a year' },
+        { id: 'avoidedCost', label: 'Repairs and downtime avoided', expr: 'avoided \u00d7 (repairCost + downtimeCost)', format: 'currency' }
+      ],
+      formulas: { benefit: 'avoidedCost', cost: 'units \u00d7 planPrice \u00d7 12', investment: '' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated savings per {period}*',
+        heroSentence: 'A {roi} return on your maintenance plan.',
+        breakdown: [
+          { label: 'Breakdowns avoided', value: 'avoided' },
+          { label: 'Repairs and downtime avoided', value: 'avoidedCost' },
+          { label: 'Plan cost ({units} units, 12 months)', value: 'cost' }
+        ],
+        payback: { enabled: false },
+        states: STATES('Add your equipment count and repair costs to see your estimate.',
+          'The plan costs more than the repairs it prevents. Try a lighter plan or fewer units.')
+      }
+    })
+  },
+  {
+    id: 'seo', name: 'Marketing or SEO',
+    desc: 'Extra revenue from more traffic and leads, per month.',
+    build: () => ({
+      content: {
+        title: 'What could SEO bring you each month?',
+        description: 'Estimate the extra revenue more search traffic could bring in.',
+        cta: { label: 'Book a strategy call', url: 'https://example.com/call', newTab: true },
+        disclaimer: '*Estimate only. SEO results build over several months and depend on competition, content and your site. These numbers show a typical month once growth is in place.',
+        period: 'month'
+      },
+      inputs: [
+        { id: 'visitors', label: 'Monthly website visitors', type: 'slider', unit: 'visitors', default: 5000, min: 100, max: 100000, step: 100 },
+        { id: 'lift', label: 'Expected traffic growth', type: 'segmented', default: '30', options: [
+          { id: '15', label: '+15%', value: 0.15 }, { id: '30', label: '+30%', value: 0.3 },
+          { id: '60', label: '+60%', value: 0.6 }, { id: '100', label: '+100%', value: 1 }
+        ] },
+        { id: 'conversion', label: 'Visitors who become leads', type: 'number', unit: '%', default: 2, min: 0, max: 100, step: 0.1, help: 'Most sites land between 1% and 3%.' },
+        { id: 'closeRate', label: 'Leads who become customers', type: 'number', unit: '%', default: 20, min: 0, max: 100, step: 1 },
+        { id: 'customerValue', label: 'Average customer value', type: 'number', prefix: 'currency', default: 800, min: 0, step: 10, help: 'What a typical customer spends with you.' },
+        { id: 'fee', label: 'Monthly SEO fee', type: 'number', prefix: 'currency', default: 1500, min: 0, step: 50 }
+      ],
+      constants: [],
+      steps: [
+        { id: 'newVisitors', label: 'New visitors', expr: 'visitors \u00d7 lift', format: 'number', unit: 'a month' },
+        { id: 'newCustomers', label: 'New customers', expr: 'newVisitors \u00d7 conversion \u00f7 100 \u00d7 closeRate \u00f7 100', format: 'number', unit: 'a month' },
+        { id: 'newRevenue', label: 'Extra revenue', expr: 'newCustomers \u00d7 customerValue', format: 'currency' }
+      ],
+      formulas: { benefit: 'newRevenue', cost: 'fee', investment: '' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated net return per {period}*',
+        heroSentence: 'A {roi} return on your SEO investment.',
+        breakdown: [
+          { label: 'New visitors', value: 'newVisitors' },
+          { label: 'New customers', value: 'newCustomers' },
+          { label: 'Extra revenue', value: 'newRevenue' },
+          { label: 'SEO fee', value: 'cost' }
+        ],
+        payback: { enabled: false },
+        states: STATES('Add your traffic, conversion and customer value to see your estimate.',
+          'At this traffic level the fee is higher than the extra revenue. Try a higher customer value or more growth.')
+      }
+    })
+  },
+  {
+    id: 'software', name: 'Software or subscription',
+    desc: 'Value of the hours a tool gives back, per seat.',
+    build: () => ({
+      content: {
+        title: 'What would this software save your team?',
+        description: 'Estimate the value of the hours your team gets back each month.',
+        cta: { label: 'Start a free trial', url: 'https://example.com/trial', newTab: true },
+        disclaimer: '*Estimate only. Based on the time savings you entered. Results depend on how your team adopts the tool.',
+        period: 'month'
+      },
+      inputs: [
+        { id: 'seats', label: 'Team members using it', type: 'slider', unit: 'people', default: 12, min: 1, max: 500, step: 1 },
+        { id: 'hoursSaved', label: 'Hours saved per person each week', type: 'number', unit: 'h', default: 1, min: 0, step: 0.5 },
+        { id: 'hourlyCost', label: 'Average hourly cost per person', type: 'number', prefix: 'currency', unit: '/h', default: 40, min: 0, step: 1, help: 'Salary plus benefits, divided by working hours.' },
+        { id: 'planTier', label: 'Plan', type: 'segmented', default: 'team', options: [
+          { id: 'starter', label: 'Starter', value: 15 }, { id: 'team', label: 'Team', value: 29 }, { id: 'business', label: 'Business', value: 49 }
+        ] },
+        { id: 'setupFee', label: 'One-time setup fee', type: 'number', prefix: 'currency', default: 500, min: 0, step: 50, allowZero: true, required: false }
+      ],
+      constants: [{ id: 'weeksPerMonth', label: 'Weeks in a month', value: 4.33, unit: 'weeks' }],
+      steps: [
+        { id: 'hoursBack', label: 'Hours back each month', expr: 'seats \u00d7 hoursSaved \u00d7 weeksPerMonth', format: 'number', unit: 'h' },
+        { id: 'timeValue', label: 'Value of that time', expr: 'hoursBack \u00d7 hourlyCost', format: 'currency' }
+      ],
+      formulas: { benefit: 'timeValue', cost: 'seats \u00d7 planTier', investment: 'setupFee' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated value per {period}*',
+        heroSentence: 'A {roi} return, and the setup pays for itself in {payback}.',
+        breakdown: [
+          { label: 'Hours back each month', value: 'hoursBack' },
+          { label: 'Value of that time', value: 'timeValue' },
+          { label: 'Subscription ({seats} seats)', value: 'cost' }
+        ],
+        payback: { enabled: true },
+        states: STATES('Add your team size and hourly cost to see your estimate.',
+          'The subscription costs more than the time it saves. Try a smaller plan or count more saved hours.')
+      }
+    })
+  },
+  {
+    id: 'consulting', name: 'Consulting',
+    desc: 'Profit a project could add, compared with its fee.',
+    build: () => ({
+      content: {
+        title: 'What could this engagement return?',
+        description: 'Estimate the profit a consulting project could add over the next year.',
+        cta: { label: 'Schedule a call', url: 'https://example.com/call', newTab: true },
+        disclaimer: '*Estimate only. Based on typical improvement ranges. Real results depend on execution, market and starting point.',
+        period: 'year'
+      },
+      inputs: [
+        { id: 'revenue', label: 'Annual revenue', type: 'number', prefix: 'currency', default: 5000000, min: 0, step: 10000 },
+        { id: 'improvement', label: 'Expected improvement', type: 'cards', default: 'typical', options: [
+          { id: 'conservative', label: 'Conservative', badge: '+2% revenue', description: 'Quick wins and process fixes', value: 0.02 },
+          { id: 'typical', label: 'Typical', badge: '+5% revenue', description: 'Pricing, sales and operations changes', value: 0.05 },
+          { id: 'ambitious', label: 'Ambitious', badge: '+10% revenue', description: 'Broad changes across the business', value: 0.1 }
+        ] },
+        { id: 'margin', label: 'Profit margin', type: 'number', unit: '%', default: 20, min: 0, max: 100, step: 1 },
+        { id: 'fee', label: 'Project fee', type: 'number', prefix: 'currency', default: 25000, min: 0, step: 500 }
+      ],
+      constants: [],
+      steps: [
+        { id: 'extraRevenue', label: 'Extra revenue', expr: 'revenue \u00d7 improvement', format: 'currency' },
+        { id: 'extraProfit', label: 'Extra profit', expr: 'extraRevenue \u00d7 margin \u00f7 100', format: 'currency' }
+      ],
+      formulas: { benefit: 'extraProfit', cost: 'fee', investment: '' },
+      outputs: {
+        hero: 'roi', heroLabel: 'Estimated return on investment*',
+        heroSentence: '{net} in extra profit after the fee, in the first {period}.',
+        breakdown: [
+          { label: 'Extra revenue', value: 'extraRevenue' },
+          { label: 'Extra profit', value: 'extraProfit' },
+          { label: 'Project fee', value: 'cost' }
+        ],
+        payback: { enabled: true },
+        states: STATES('Add your revenue and margin to see your estimate.',
+          'The fee is higher than the expected profit. Try the typical scenario or check your margin.')
+      }
+    })
+  },
+  {
+    id: 'time-savings', name: 'Team time savings',
+    desc: 'What automating repetitive work gives back.',
+    build: () => ({
+      content: {
+        title: 'How much is manual work costing you?',
+        description: 'Estimate what your team gets back when repetitive tasks are automated.',
+        cta: { label: 'See how it works', url: 'https://example.com/demo', newTab: true },
+        disclaimer: '*Estimate only. Assumes freed-up hours go to productive work. Results vary by process and team.',
+        period: 'month'
+      },
+      inputs: [
+        { id: 'people', label: 'People doing this work', type: 'slider', unit: 'people', default: 5, min: 1, max: 100, step: 1 },
+        { id: 'hoursLost', label: 'Hours each person spends on it weekly', type: 'number', unit: 'h', default: 6, min: 0, step: 0.5 },
+        { id: 'automated', label: 'Share we can automate', type: 'slider', unit: '%', default: 60, min: 10, max: 100, step: 5 },
+        { id: 'hourlyCost', label: 'Average hourly cost', type: 'number', prefix: 'currency', unit: '/h', default: 35, min: 0, step: 1 },
+        { id: 'servicePrice', label: 'Our monthly price', type: 'number', prefix: 'currency', default: 900, min: 0, step: 50 }
+      ],
+      constants: [{ id: 'weeksPerMonth', label: 'Weeks in a month', value: 4.33, unit: 'weeks' }],
+      steps: [
+        { id: 'hoursFreed', label: 'Hours freed each month', expr: 'people \u00d7 hoursLost \u00d7 weeksPerMonth \u00d7 automated \u00f7 100', format: 'number', unit: 'h' },
+        { id: 'hoursValue', label: 'Value of those hours', expr: 'hoursFreed \u00d7 hourlyCost', format: 'currency' }
+      ],
+      formulas: { benefit: 'hoursValue', cost: 'servicePrice', investment: '' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated net gain per {period}*',
+        heroSentence: 'A {roi} return on what you pay us.',
+        breakdown: [
+          { label: 'Hours freed each month', value: 'hoursFreed' },
+          { label: 'Value of those hours', value: 'hoursValue' },
+          { label: 'Our price', value: 'cost' }
+        ],
+        payback: { enabled: false },
+        states: STATES('Add your team size and hours to see your estimate.',
+          'With these numbers the price is higher than the time saved. Try more people or hours.')
+      }
+    })
+  },
+  {
+    id: 'custom', name: 'Start from scratch',
+    desc: 'Two simple fields and a price. Shape it however you like.',
+    build: () => ({
+      content: {
+        title: 'What is our service worth to you?',
+        description: 'Enter a few numbers to estimate your return.',
+        cta: { label: 'Get in touch', url: 'https://example.com/contact', newTab: true },
+        disclaimer: DISCLAIMER_GENERIC,
+        period: 'month'
+      },
+      inputs: [
+        { id: 'hours', label: 'Hours you\u2019d save each month', type: 'number', unit: 'h', default: 10, min: 0, step: 1 },
+        { id: 'hourlyValue', label: 'What an hour of your time is worth', type: 'number', prefix: 'currency', default: 50, min: 0, step: 5 },
+        { id: 'price', label: 'Monthly price', type: 'number', prefix: 'currency', default: 200, min: 0, step: 10 }
+      ],
+      constants: [],
+      steps: [],
+      formulas: { benefit: 'hours \u00d7 hourlyValue', cost: 'price', investment: '' },
+      outputs: {
+        hero: 'net', heroLabel: 'Estimated net gain per {period}*',
+        heroSentence: 'A {roi} return on the price.',
+        breakdown: [{ label: 'Value of your time', value: 'benefit' }, { label: 'Price', value: 'cost' }],
+        payback: { enabled: false },
+        states: STATES('Fill in the fields to see your estimate.', 'With these numbers the price is higher than the gain.')
+      }
+    })
+  }
+];
+
+const DEFAULT_THEME = { primary: '#0E3B17', accent: '#F5B301', font: 'Figtree', layout: 'split', radius: 'soft', mode: 'light', logo: null, overrides: {} };
+const DEFAULT_FORMAT = { currency: 'USD', locale: 'en-US', decimals: { currency: 0, number: 0, percent: 0 } };
+
+function makeConfig(templateId, theme, format) {
+  const t = TEMPLATES.find((x) => x.id === templateId) || TEMPLATES[0];
+  const base = t.build();
+  return normalize({
+    schema: 'roi-calc@1',
+    meta: { id: 'roi-calculator', template: t.id, updatedAt: today() },
+    ...base,
+    theme: clone(theme || DEFAULT_THEME),
+    format: clone(format || DEFAULT_FORMAT)
+  });
+}
+
+/* Fills anything missing so older or hand-edited configs still load. */
+function normalize(c) {
+  c = c || {};
+  c.schema = 'roi-calc@1';
+  c.meta = Object.assign({ id: 'roi-calculator', template: 'custom', updatedAt: today() }, c.meta);
+  c.content = Object.assign({ title: '', description: '', disclaimer: '', period: 'year' }, c.content);
+  c.content.cta = Object.assign({ label: '', url: '', newTab: true }, c.content.cta);
+  if (c.content.period !== 'month') c.content.period = 'year';
+  c.inputs = Array.isArray(c.inputs) ? c.inputs : [];
+  c.constants = Array.isArray(c.constants) ? c.constants : [];
+  c.steps = Array.isArray(c.steps) ? c.steps : [];
+  c.formulas = Object.assign({ benefit: '', cost: '', investment: '' }, c.formulas);
+  c.outputs = Object.assign({ hero: 'net', heroLabel: '', heroSentence: '', breakdown: [] }, c.outputs);
+  c.outputs.payback = Object.assign({ enabled: false }, c.outputs.payback);
+  c.outputs.states = Object.assign({ empty: '', negative: '' }, c.outputs.states);
+  if (!Array.isArray(c.outputs.breakdown)) c.outputs.breakdown = [];
+  c.theme = Object.assign(clone(DEFAULT_THEME), c.theme);
+  c.format = Object.assign(clone(DEFAULT_FORMAT), c.format);
+  c.format.decimals = Object.assign({ currency: 0, number: 0, percent: 0 }, c.format.decimals);
+  return c;
+}
+
+/* Checks an imported file and explains problems in plain words. */
+function validateImport(obj) {
+  const errs = [];
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return ['This file isn\u2019t a calculator config.'];
+  if (!/^roi-calc@/.test(obj.schema || '')) errs.push('This file wasn\u2019t made by ROI Builder (it has no "schema": "roi-calc@1").');
+  if (!Array.isArray(obj.inputs)) errs.push('The config has no list of fields ("inputs").');
+  const seen = new Set();
+  (obj.inputs || []).forEach((f, i) => {
+    if (!f || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(f.id || '')) errs.push(`Field ${i + 1} has a missing or invalid name.`);
+    else if (seen.has(f.id)) errs.push(`Two fields share the name \u201c${f.id}\u201d.`);
+    else seen.add(f.id);
+    if (f && !TYPE_LABELS[f.type]) errs.push(`Field \u201c${f.label || f.id}\u201d has an unknown type.`);
+  });
+  return errs;
+}
+
+/* ---------- Names ---------- */
+const TYPE_LABELS = { number: 'Number', slider: 'Slider', cards: 'Option cards', segmented: 'Buttons', toggle: 'On/off switch' };
+const FUNCTION_NAMES = Object.keys(ROICalc.FUNCTIONS);
+function slugify(label) {
+  const words = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  let s = words.map((w, i) => i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()).join('');
+  if (!s) s = 'value';
+  if (/^[0-9]/.test(s)) s = 'n' + s;
+  return s;
+}
+
+/* ---------- Color system: one color in, a full accessible palette out ---------- */
+function normHex(h) {
+  if (!h) return null;
+  h = String(h).trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(h)) h = h.split('').map((c) => c + c).join('');
+  return /^[0-9a-f]{6}$/i.test(h) ? '#' + h.toUpperCase() : null;
+}
+function hexToRgb(hex) { const n = parseInt(normHex(hex).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgbToHex(rgb) { return '#' + rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+function rgbToHsl([r, g, b]) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s * 100, l * 100];
+}
+function hsl(h, s, l) {
+  s = Math.max(0, Math.min(100, s)) / 100; l = Math.max(0, Math.min(100, l)) / 100;
+  const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return rgbToHex([f(0) * 255, f(8) * 255, f(4) * 255]);
+}
+function luminance(hex) {
+  const c = hexToRgb(hex).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function contrast(a, b) { const A = luminance(a), B = luminance(b); return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); }
+function mix(a, b, t) { const x = hexToRgb(a), y = hexToRgb(b); return rgbToHex(x.map((v, i) => v * t + y[i] * (1 - t))); }
+/* Moves lightness one step at a time until the contrast target is met. */
+function fit(hex, against, min, dir) {
+  let [h, s, l] = rgbToHsl(hexToRgb(hex)), c = hex, guard = 0;
+  while (contrast(c, against) < min && guard++ < 101) { l += dir; c = hsl(h, s, l); if (l <= 0 || l >= 100) break; }
+  return c;
+}
+const fitHsl = (h, s, l, against, min, dir) => fit(hsl(h, s, l), against, min, dir);
+function bestOn(bg, a, b) { return contrast(a, bg) >= contrast(b, bg) ? a : b; }
+
+function deriveTokens(theme, dark) {
+  const P = normHex(theme.primary) || '#0E3B17';
+  const [ph, ps, pl] = rgbToHsl(hexToRgb(P));
+  const custom = theme.accent && theme.accent !== 'auto' ? normHex(theme.accent) : null;
+  const [ah, as] = custom ? rgbToHsl(hexToRgb(custom)) : [ph, ps];
+  const notes = [];
+  const tintH = custom ? ah : ph, tintS = Math.min(custom ? as : ps, 60);
+  let bg, field, border, text;
+  if (!dark) {
+    bg = hsl(tintH, tintS * 0.45, 94);
+    field = hsl(tintH, tintS * 0.4, 90.5);
+    border = hsl(tintH, tintS * 0.3, 76);
+    text = fitHsl(ph, Math.min(ps, 55), 14, field, 7, -1);
+  } else {
+    bg = hsl(ph, Math.min(ps, 22), 8);
+    field = hsl(ph, Math.min(ps, 18), 13);
+    border = hsl(ph, Math.min(ps, 14), 27);
+    text = hsl(ph, Math.min(ps, 12), 93);
+  }
+  // Result panel: the primary color itself in light mode, a deep tint in dark mode.
+  let panel = P, onPanel;
+  const ink = hsl(ph, Math.min(ps, 55), 10);
+  if (!dark) {
+    onPanel = bestOn(P, '#FFFFFF', ink);
+    if (contrast(onPanel, panel) < 4.5) {
+      panel = fit(P, onPanel, 4.5, onPanel === '#FFFFFF' ? -1 : 1);
+      notes.push(`The result panel moved from ${P} to ${panel} so its text stays readable.`);
+    }
+  } else {
+    panel = hsl(ph, Math.min(ps, 45), 15);
+    onPanel = hsl(ph, 12, 95);
+  }
+  const panelDark = luminance(panel) < 0.18;
+  const panelMuted = fitHsl(ph, Math.min(ps, 22), panelDark ? 78 : 30, panel, 4.5, panelDark ? 1 : -1);
+  const panelRule = mix(onPanel, panel, panelDark ? 0.18 : 0.22);
+  // Highlighted number. Custom accents are kept unless they disappear into the panel.
+  let accent;
+  if (custom) {
+    accent = custom;
+    if (contrast(accent, panel) < 3) {
+      accent = onPanel;
+      notes.push(`Your accent ${custom} blends into the panel, so the big number and button use the panel\u2019s text color instead.`);
+    }
+  } else {
+    accent = fitHsl(ph, Math.max(ps, 55), panelDark ? 72 : 28, panel, 4.5, panelDark ? 1 : -1);
+  }
+  // Button on the panel.
+  let cta = accent, onCta = bestOn(cta, '#FFFFFF', ink);
+  if (contrast(onCta, cta) < 4.5) {
+    cta = fit(cta, onCta, 4.5, onCta === '#FFFFFF' ? -1 : 1);
+    notes.push(`The button color shifted to ${cta} so its label stays readable.`);
+  }
+  // Selected options on the input side.
+  let select = custom || (dark ? hsl(ph, Math.max(ps, 45), 62) : P);
+  let onSelect = bestOn(select, '#FFFFFF', dark ? bg : text);
+  if (contrast(onSelect, select) < 4.5) select = fit(select, onSelect, 4.5, onSelect === '#FFFFFF' ? -1 : 1);
+  const [sh, ss, sl] = rgbToHsl(hexToRgb(select));
+  const selectBorder = fitHsl(sh, ss, sl, field, 3, dark ? 1 : -1);
+  const selectSoft = mix(select, field, dark ? 0.2 : 0.22);
+  const against = contrast(selectSoft, field) < 1 ? field : selectSoft;
+  const muted = dark ? fitHsl(ph, Math.min(ps, 10), 66, against, 4.5, 1) : fitHsl(ph, Math.min(ps, 25), 36, against, 4.5, -1);
+  const focus = dark ? fitHsl(ph, 80, 70, bg, 3, 1) : fitHsl(ph, 80, 38, bg, 3, -1);
+  const negative = fitHsl(6, 85, panelDark ? 72 : 38, panel, 4.5, panelDark ? 1 : -1);
+
+  const vars = {
+    bg, field, border, text, muted, focus,
+    select, 'on-select': onSelect, 'select-soft': selectSoft, 'select-border': selectBorder,
+    panel, 'on-panel': onPanel, 'panel-muted': panelMuted, 'panel-rule': panelRule,
+    accent, cta, 'on-cta': onCta, negative
+  };
+  Object.assign(vars, (theme.overrides && theme.overrides[dark ? 'dark' : 'light']) || {});
+  const checks = [
+    ['Text on background', vars.text, vars.bg, 4.5],
+    ['Help text on fields', vars.muted, vars.field, 4.5],
+    ['Text on result panel', vars['on-panel'], vars.panel, 4.5],
+    ['Big number on panel', vars.accent, vars.panel, 3],
+    ['Button label', vars['on-cta'], vars.cta, 4.5],
+    ['Selected option label', vars['on-select'], vars.select, 4.5],
+    ['Selected option outline', vars['select-border'], vars.field, 3],
+    ['Negative result on panel', vars.negative, vars.panel, 4.5]
+  ].map(([name, fg, bgc, min]) => ({ name, fg, bg: bgc, min, ratio: contrast(fg, bgc), pass: contrast(fg, bgc) >= min - 0.01 }));
+  return { vars, checks, notes };
+}
+
+const VAR_NOTES = {
+  bg: 'page background', field: 'input background', border: 'input borders', text: 'main text', muted: 'help text',
+  focus: 'keyboard focus ring', select: 'selected option', 'on-select': 'text on selected option',
+  'select-soft': 'selected card background', 'select-border': 'selected outline and slider',
+  panel: 'result panel', 'on-panel': 'text on result panel', 'panel-muted': 'small text on panel',
+  'panel-rule': 'lines on panel', accent: 'big result number', cta: 'button', 'on-cta': 'button text', negative: 'negative result'
+};
+const RADII = {
+  sharp: { r: '0px', sm: '0px', thumb: '0px', btn: '0px' },
+  soft: { r: '12px', sm: '8px', thumb: '4px', btn: '999px' },
+  round: { r: '22px', sm: '14px', thumb: '999px', btn: '999px' }
+};
+
+/* ---------- Fonts (curated Google Fonts) ---------- */
+const FONTS = [
+  { name: 'Inter', q: 'Inter:wght@400;500;600', serif: false },
+  { name: 'Figtree', q: 'Figtree:wght@400;500;600', serif: false },
+  { name: 'DM Sans', q: 'DM+Sans:wght@400;500;600', serif: false },
+  { name: 'Manrope', q: 'Manrope:wght@400;500;600', serif: false },
+  { name: 'Space Grotesk', q: 'Space+Grotesk:wght@400;500;600', serif: false },
+  { name: 'IBM Plex Sans', q: 'IBM+Plex+Sans:wght@400;500;600', serif: false },
+  { name: 'Fraunces', q: 'Fraunces:wght@400;500;600', serif: true },
+  { name: 'Source Serif 4', q: 'Source+Serif+4:wght@400;500;600', serif: true }
+];
+const fontOf = (name) => FONTS.find((f) => f.name === name) || FONTS[1];
+const fontURL = (name) => `https://fonts.googleapis.com/css2?family=${fontOf(name).q}&display=swap`;
+const fontStack = (name) => { const f = fontOf(name); return `'${f.name}', ${f.serif ? 'Georgia, \'Times New Roman\', serif' : 'system-ui, -apple-system, \'Segoe UI\', Roboto, sans-serif'}`; };
+const loadedFonts = new Set();
+function ensureFont(name) {
+  if (loadedFonts.has(name)) return;
+  loadedFonts.add(name);
+  const l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = fontURL(name);
+  document.head.appendChild(l);
+}
+
+/* ---------- CSS variables for a theme ---------- */
+function varsCSS(theme, selector, indent = '') {
+  const L = deriveTokens(theme, false), D = deriveTokens(theme, true), r = RADII[theme.radius] || RADII.soft;
+  const lines = (vars) => Object.keys(vars).map((k) => `${indent}  --rc-${k}: ${vars[k]};${VAR_NOTES[k] ? ' /* ' + VAR_NOTES[k] + ' */' : ''}`).join('\n');
+  const shared = [
+    `${indent}  --rc-font: ${fontStack(theme.font)};`,
+    `${indent}  --rc-radius: ${r.r}; /* result panel */`,
+    `${indent}  --rc-radius-sm: ${r.sm}; /* inputs and cards */`,
+    `${indent}  --rc-radius-thumb: ${r.thumb};`,
+    `${indent}  --rc-radius-btn: ${r.btn};`
+  ].join('\n');
+  const mode = theme.mode || 'light';
+  const main = mode === 'dark' ? D : L;
+  let css = `${indent}${selector} {\n${indent}  color-scheme: ${mode === 'dark' ? 'dark' : 'light'};\n${shared}\n${lines(main.vars)}\n${indent}}`;
+  if (mode === 'auto') {
+    css += `\n${indent}@media (prefers-color-scheme: dark) {\n${indent}  ${selector} {\n${indent}    color-scheme: dark;\n${lines(D.vars).replace(/^/gm, '  ')}\n${indent}  }\n${indent}}`;
+  }
+  return css;
+}
+
+/* ---------- Exports ---------- */
+// Keeps the config safe inside a <script> tag.
+// Keeps the config safe inside a <script> tag and readable in any file encoding (non-ASCII becomes \uXXXX).
+const asciiOnly = (str) => str.replace(/[\u007f-\uffff]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+const jsonForScript = (obj, space) => asciiOnly(JSON.stringify(obj, null, space).replace(/</g, '\\u003c'));
+const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const langOf = (cfg) => (cfg.format.locale || 'en').split('-')[0];
+const fileSlug = (cfg) => (cfg.meta.id || 'roi-calculator').replace(/[^a-z0-9-]/gi, '-').toLowerCase() || 'roi-calculator';
+
+const RESIZE_SCRIPT = `/* Tells the parent page how tall the calculator is, so an iframe embed can size itself. */
+(function () {
+  if (window.parent === window || !window.ResizeObserver) return;
+  function send() { window.parent.postMessage({ type: 'roi-calc:height', height: document.documentElement.scrollHeight }, '*'); }
+  new ResizeObserver(send).observe(document.body);
+  window.addEventListener('load', send);
+})();`;
+
+function buildHTML(cfg) {
+  return `<!DOCTYPE html>
+<html lang="${langOf(cfg)}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escAttr(cfg.content.title || 'ROI calculator')}</title>
+<\x21-- The font is the only external file. Remove these three lines to use system fonts. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${fontURL(cfg.theme.font)}">
+<style>
+/* ---------------------------------------------------------------
+   Look and feel. Edit these variables to adjust colors by hand.
+   --------------------------------------------------------------- */
+${varsCSS(cfg.theme, ':root')}
+
+html, body { margin: 0; background: var(--rc-bg); }
+
+/* ---------------------------------------------------------------
+   Calculator styles
+   --------------------------------------------------------------- */
+${RC_CSS}
+</style>
+</head>
+<body>
+<main id="roi-calculator"></main>
+
+<script>
+/* Calculation engine and renderer. Safe formula parser: no eval, no dependencies. */
+var ROICalc = (${RUNTIME_SOURCE})();
+
+/* Your calculator. Import this object back into ROI Builder to keep editing. */
+var CONFIG = ${jsonForScript(cfg, 2)};
+
+ROICalc.mount(document.getElementById('roi-calculator'), CONFIG);
+
+${RESIZE_SCRIPT}
+<\/script>
+</body>
+</html>
+`;
+}
+
+const RESIZE_LISTENER = (id) => `<script>
+  /* Resizes the calculator iframe to fit its content. */
+  window.addEventListener('message', function (event) {
+    var frame = document.getElementById('${id}');
+    if (frame && event.source === frame.contentWindow && event.data && event.data.type === 'roi-calc:height') {
+      frame.style.height = event.data.height + 'px';
+    }
+  });
+<\/script>`;
+
+function buildEmbed(cfg, mode, url) {
+  const id = fileSlug(cfg) + '-frame';
+  const common = `id="${id}" title="${escAttr(cfg.content.title || 'ROI calculator')}" style="width: 100%; min-height: 680px; border: 0;" loading="lazy"`;
+  if (mode === 'srcdoc') {
+    return `<iframe ${common}\n  srcdoc="${escAttr(buildHTML(cfg))}"></iframe>\n${RESIZE_LISTENER(id)}\n`;
+  }
+  return `<iframe ${common}\n  src="${escAttr(url || 'https://your-site.com/roi-calculator.html')}"></iframe>\n${RESIZE_LISTENER(id)}\n`;
+}
+
+function buildWebComponent(cfg) {
+  const css = `${varsCSS(cfg.theme, ':host')}\n:host { display: block; }\n${RC_CSS}`;
+  return `/* ===================================================================
+   <roi-calculator> web component — ${cfg.content.title}
+   Usage:
+     <script src="roi-calculator.js" defer><\/script>
+     <roi-calculator></roi-calculator>
+   No dependencies. Colors live as --rc-* variables in the CSS string below.
+   =================================================================== */
+(function () {
+  /* Calculation engine and renderer. */
+  var ROICalc = (${RUNTIME_SOURCE})();
+
+  /* Your calculator. Import this object back into ROI Builder to keep editing. */
+  var CONFIG = ${jsonForScript(cfg, 2).replace(/\n/g, '\n  ')};
+
+  var FONT_URL = ${JSON.stringify(fontURL(cfg.theme.font))};
+  var CSS = ${asciiOnly(JSON.stringify(css))};
+
+  class RoiCalculator extends HTMLElement {
+    connectedCallback() {
+      if (this.shadowRoot) return;
+      // Fonts can't load from inside Shadow DOM, so the font link goes in the page head once.
+      if (FONT_URL && !document.querySelector('link[data-roi-calc-font]')) {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = FONT_URL; link.setAttribute('data-roi-calc-font', '');
+        document.head.appendChild(link);
+      }
+      var root = this.attachShadow({ mode: 'open' });
+      var style = document.createElement('style');
+      style.textContent = CSS;
+      root.appendChild(style);
+      var mountPoint = document.createElement('div');
+      root.appendChild(mountPoint);
+      this._calc = ROICalc.mount(mountPoint, CONFIG);
+    }
+    disconnectedCallback() { if (this._calc) this._calc.destroy(); }
+  }
+  if (!customElements.get('roi-calculator')) customElements.define('roi-calculator', RoiCalculator);
+})();
+`;
+}
+
+function buildReact(cfg) {
+  const css = `${varsCSS(cfg.theme, '.roi-calc')}\n${RC_CSS}`;
+  return `/* ===================================================================
+   RoiCalculator.jsx — ${cfg.content.title}
+   Usage:  import RoiCalculator from './RoiCalculator';
+           <RoiCalculator />
+   No dependencies besides React. Colors live as --rc-* variables in CSS below,
+   scoped to .roi-calc so they don't leak into the rest of your app.
+   =================================================================== */
+import { useEffect, useRef } from 'react';
+
+/* Calculation engine and renderer (framework-free, shared with the HTML export). */
+const ROICalc = (${RUNTIME_SOURCE})();
+
+/* Your calculator. Import this object back into ROI Builder to keep editing. */
+export const CONFIG = ${jsonForScript(cfg, 2)};
+
+const FONT_URL = ${JSON.stringify(fontURL(cfg.theme.font))};
+
+const CSS = ${asciiOnly(JSON.stringify(css))};
+
+export default function RoiCalculator({ config = CONFIG }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    // Load the font once per page.
+    if (FONT_URL && !document.querySelector('link[data-roi-calc-font]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = FONT_URL;
+      link.setAttribute('data-roi-calc-font', '');
+      document.head.appendChild(link);
+    }
+    const calc = ROICalc.mount(ref.current, config);
+    return () => calc.destroy();
+  }, [config]);
+
+  return (
+    <>
+      <style>{CSS}</style>
+      <div className="roi-calc" ref={ref} />
+    </>
+  );
+}
+`;
+}
+
+const buildJSON = (cfg) => JSON.stringify(cfg, null, 2) + '\n';
+
+/* ===========================================================================
+   BUILDER INTERFACE
+   =========================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const qt = (s) => '\u201c' + s + '\u201d';
+const STORAGE_KEY = 'roi-builder:draft:v1';
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage full or blocked: keep working */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+};
+const HERO_LABELS = {
+  net: 'Estimated net gain per {period}*', roi: 'Estimated return on investment*',
+  benefit: 'Estimated total gain per {period}*', payback: 'Pays for itself in*'
+};
+const STEP_NAMES = ['Words', 'Math', 'Look', 'Export'];
+
+function loadDraft() {
+  const raw = store.get(STORAGE_KEY);
+  if (!raw) return null;
+  try { const o = JSON.parse(raw); return validateImport(o).length ? null : normalize(o); } catch (e) { return null; }
+}
+const snapshotOf = (c) => JSON.stringify({ content: c.content, inputs: c.inputs, constants: c.constants, steps: c.steps, formulas: c.formulas, outputs: c.outputs });
+
+let config = loadDraft() || makeConfig('solar-cleaning');
+let snapshot = snapshotOf(config);
+let step = 0, openItem = null, justAdded = null;
+let exportTab = 'html', embedMode = 'url', embedUrl = 'https://your-site.com/roi-calculator.html';
+let validators = [];
+const autoIds = new Set();   // names still generated from their label
+
+/* ---------- Small DOM helpers ---------- */
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k === 'html') e.innerHTML = v; // only used for the builder's own static SVG icons
+    else if (k === 'on') for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn);
+    else if (k === 'value') e.value = v;
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) e.append(kid);
+  return e;
+}
+let uidN = 0;
+const uid = (p = 'g') => p + '-' + (++uidN);
+
+function gField(label, control, hint, extra) {
+  if (!control.id) control.id = uid('f');
+  const kids = [el('label', { for: control.id, text: label }), control];
+  if (hint) {
+    const h = el('p', { class: 'g-hint', id: control.id + '-hint', text: hint });
+    control.setAttribute('aria-describedby', h.id);
+    kids.push(h);
+  }
+  if (extra) kids.push(extra);
+  return el('div', { class: 'g-field' }, ...kids);
+}
+function gText(value, onInput, a = {}) {
+  const i = el(a.multiline ? 'textarea' : 'input', {
+    class: 'g-input' + (a.mono ? ' mono' : ''), type: a.multiline ? null : (a.type || 'text'), rows: a.rows,
+    placeholder: a.placeholder, spellcheck: a.mono ? 'false' : null, inputmode: a.inputmode, step: a.step, autocomplete: 'off'
+  });
+  i.value = value == null ? '' : value;
+  i.addEventListener('input', () => onInput(i.value, i));
+  if (a.onChange) i.addEventListener('change', () => a.onChange(i.value, i));
+  return i;
+}
+function gNumber(value, onInput, a = {}) {
+  return gText(value == null ? '' : String(value), (v, i) => {
+    const t = v.trim(), n = parseFloat(t);
+    onInput(t === '' || !isFinite(n) ? null : n, i);
+  }, Object.assign({ type: 'number', inputmode: 'decimal', step: 'any' }, a));
+}
+function gSelect(options, value, onChange) {
+  const s = el('select', { class: 'g-select' }, options.map((o) => el('option', { value: o.value, text: o.label })));
+  s.value = value;
+  s.addEventListener('change', () => onChange(s.value));
+  return s;
+}
+function gSeg(options, value, onChange, label) {
+  const g = el('div', { class: 'seg', role: 'group', 'aria-label': label });
+  const btns = options.map((o) => el('button', {
+    type: 'button', text: o.label, 'aria-pressed': String(o.value === value),
+    on: { click: () => { btns.forEach((b) => b.setAttribute('aria-pressed', 'false')); btns[options.indexOf(o)].setAttribute('aria-pressed', 'true'); onChange(o.value); } }
+  }));
+  g.append(...btns);
+  return g;
+}
+function gSwitch(label, checked, onChange) {
+  const i = el('input', { type: 'checkbox', role: 'switch' });
+  i.checked = !!checked;
+  i.addEventListener('change', () => onChange(i.checked));
+  return el('label', { class: 'switch' }, i, el('span', { class: 'track', 'aria-hidden': 'true' }), el('span', { text: label }));
+}
+function iconBtn(symbol, label, onClick, disabled) {
+  return el('button', { type: 'button', class: 'icon-btn small', 'aria-label': label, title: label, disabled: disabled ? true : null, text: symbol, on: { click: onClick } });
+}
+function section(title, note, ...kids) {
+  return el('section', { class: 'sec' }, el('h3', { text: title }), note ? el('p', { class: 'sec-note', text: note }) : null, ...kids);
+}
+function stepHead(title, note) { return el('div', { class: 'step-head' }, el('h2', { text: title }), el('p', { text: note })); }
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('is-on');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('is-on'), 2600);
+}
+
+/* ---------- Change pipeline: every edit lands here ---------- */
+let pending = 0;
+function changed(opts = {}) {
+  config.meta.updatedAt = today();
+  if (opts.rerender) renderStep(opts.focus);
+  else validators.forEach((v) => v());
+  clearTimeout(pending);
+  pending = setTimeout(() => {
+    applyPreview();
+    store.set(STORAGE_KEY, JSON.stringify(config));
+    if (step === 2) renderContrast();
+    if (step === 3) renderExportCode();
+  }, 60);
+}
+
+/* ---------- Names, renaming and references ---------- */
+function takenNames(except) {
+  const s = new Set([...ROICalc.RESERVED, ...FUNCTION_NAMES]);
+  [...config.inputs, ...config.constants, ...config.steps].forEach((x) => { if (x.id !== except) s.add(x.id); });
+  return s;
+}
+function uniqueId(base, except) {
+  const taken = takenNames(except);
+  let id = base, k = 2;
+  while (taken.has(id)) id = base + k++;
+  return id;
+}
+function renameInExpr(expr, a, b) {
+  if (typeof expr !== 'string' || !expr) return expr;
+  try {
+    const toks = ROICalc.tokenize(expr);
+    let out = expr;
+    for (let k = toks.length - 1; k >= 0; k--) {
+      const t = toks[k];
+      if (t.type === 'name' && t.value === a && !(toks[k + 1] && toks[k + 1].type === '(')) out = out.slice(0, t.pos) + b + out.slice(t.end);
+    }
+    return out;
+  } catch (e) { return expr.replace(new RegExp('\\b' + a + '\\b', 'g'), b); }
+}
+const renameInText = (s, a, b) => typeof s === 'string' ? s.split('{' + a + '}').join('{' + b + '}') : s;
+function renameId(a, b) {
+  const c = config;
+  c.steps.forEach((s) => { s.expr = renameInExpr(s.expr, a, b); });
+  ['benefit', 'cost', 'investment'].forEach((k) => { c.formulas[k] = renameInExpr(c.formulas[k], a, b); });
+  c.outputs.breakdown.forEach((r) => { r.value = renameInExpr(r.value, a, b); r.label = renameInText(r.label, a, b); });
+  c.inputs.forEach((f) => {
+    if (f.showIf) f.showIf = renameInExpr(f.showIf, a, b);
+    (f.units || []).forEach((u) => { if (typeof u.factor === 'string') u.factor = renameInExpr(u.factor, a, b); });
+    if (typeof f.help === 'string') f.help = renameInText(f.help, a, b);
+    else if (f.help) { f.help.on = renameInText(f.help.on, a, b); f.help.off = renameInText(f.help.off, a, b); }
+  });
+  c.outputs.heroLabel = renameInText(c.outputs.heroLabel, a, b);
+  c.outputs.heroSentence = renameInText(c.outputs.heroSentence, a, b);
+  c.outputs.states.empty = renameInText(c.outputs.states.empty, a, b);
+  c.outputs.states.negative = renameInText(c.outputs.states.negative, a, b);
+}
+function exprList() {
+  const c = config, list = [];
+  c.steps.forEach((s) => list.push(s.expr));
+  ['benefit', 'cost', 'investment'].forEach((k) => list.push(c.formulas[k]));
+  c.outputs.breakdown.forEach((r) => list.push(r.value));
+  c.inputs.forEach((f) => { if (f.showIf) list.push(f.showIf); });
+  return list;
+}
+function countRefs(name) {
+  return exprList().filter((e) => { try { return ROICalc.tokenize(e).some((t) => t.type === 'name' && t.value === name); } catch (err) { return false; } }).length;
+}
+function namesMap(o = {}) {
+  const m = {};
+  config.inputs.forEach((f) => { m[f.id] = { label: f.label || f.id, group: 'Fields' }; });
+  config.constants.forEach((c) => { m[c.id] = { label: c.label || c.id, group: 'Assumptions' }; });
+  const lim = o.upToStep == null ? config.steps.length : o.upToStep;
+  config.steps.slice(0, lim).forEach((s) => { m[s.id] = { label: s.label || s.id, group: 'Behind the scenes' }; });
+  if (o.reserved) [['benefit', 'Total gain'], ['cost', 'Total cost'], ['net', 'Net gain'], ['roi', 'ROI'], ['payback', 'Payback'], ['investment', 'Investment']]
+    .forEach(([k, l]) => { m[k] = { label: l, group: 'Results' }; });
+  return m;
+}
+
+/* "Name in formulas" input, with plain-language checks. */
+function idInput(obj, prefix) {
+  const err = el('p', { class: 'g-error', hidden: true });
+  const i = gText(obj.id, () => { err.hidden = true; i.removeAttribute('aria-invalid'); }, {
+    mono: true,
+    onChange: (v) => {
+      v = v.trim();
+      let msg = '';
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(v)) msg = 'Use letters and numbers only, starting with a letter. No spaces.';
+      else if (ROICalc.RESERVED.includes(v) || FUNCTION_NAMES.includes(v.toLowerCase())) msg = `${qt(v)} is used by the calculator itself. Pick another name.`;
+      else if (takenNames(obj.id).has(v)) msg = `Something else already uses ${qt(v)}.`;
+      if (msg) { err.textContent = msg; err.hidden = false; i.setAttribute('aria-invalid', 'true'); i.value = obj.id; return; }
+      if (v === obj.id) return;
+      const old = obj.id;
+      renameId(old, v);
+      obj.id = v;
+      autoIds.delete(old);
+      if (openItem === prefix + old) openItem = prefix + v;
+      changed({ rerender: true });
+      toast(`Renamed to ${qt(v)} and updated every formula that used it.`);
+    }
+  });
+  i._err = err;
+  return i;
+}
+/* Label input that keeps an auto-generated name in sync. */
+function labelInput(obj, prefix, titleEl, idIn) {
+  return gText(obj.label, (v) => {
+    obj.label = v;
+    if (titleEl) titleEl.textContent = v || 'Untitled';
+    if (autoIds.has(obj.id)) {
+      const nid = uniqueId(slugify(v), obj.id);
+      if (nid !== obj.id) {
+        renameId(obj.id, nid);
+        autoIds.delete(obj.id); autoIds.add(nid);
+        if (openItem === prefix + obj.id) openItem = prefix + nid;
+        obj.id = nid;
+        if (idIn) idIn.value = nid;
+      }
+    }
+    changed();
+  });
+}
+function move(arr, i, d) {
+  const j = i + d;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  changed({ rerender: true });
+}
+
+/* ---------- Formula builder: clickable blocks + a text field ---------- */
+function formulaBuilder({ get, set, names, kind = 'currency', allowEmpty = false, open = true, label }) {
+  const blocks = el('div', { class: 'fb-blocks', 'aria-hidden': 'true' });
+  const ta = el('textarea', { class: 'g-input fb-text', rows: '2', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-label': label });
+  ta.value = get() || '';
+  const status = el('p', { class: 'fb-status', id: uid('st') });
+  ta.setAttribute('aria-describedby', status.id);
+  let caret = ta.value.length;
+  const keep = () => { caret = ta.selectionStart == null ? ta.value.length : ta.selectionStart; };
+  ['keyup', 'click', 'blur', 'select'].forEach((ev) => ta.addEventListener(ev, keep));
+  ta.addEventListener('input', () => { keep(); set(ta.value); validate(); changed(); });
+
+  function insert(piece) {
+    const v = ta.value, before = v.slice(0, caret), after = v.slice(caret);
+    let ins = piece;
+    if (/^[+\u2212\u00d7\u00f7,]$/.test(piece)) ins = (piece === ',' ? '' : ' ') + piece + ' ';
+    else if (piece !== ')' && before && !/[\s(]$/.test(before)) ins = ' ' + piece;
+    ta.value = (before + ins + after).replace(/ {2,}/g, ' ');
+    caret = Math.min(ta.value.length, (before + ins).replace(/ {2,}/g, ' ').length);
+    set(ta.value); validate(); changed();
+    ta.focus(); ta.setSelectionRange(caret, caret);
+  }
+
+  const palette = el('div', { class: 'fb-palette', hidden: open ? null : true });
+  const groups = {}, labelCount = {};
+  const allNames = Object.entries(names());
+  allNames.forEach(([, info]) => { labelCount[info.label] = (labelCount[info.label] || 0) + 1; });
+  allNames.forEach(([name, info]) => { (groups[info.group] = groups[info.group] || []).push([name, info]); });
+  ['Fields', 'Assumptions', 'Behind the scenes', 'Results'].forEach((g) => {
+    if (!groups[g]) return;
+    palette.append(el('div', { class: 'fb-group' }, el('span', { class: 'fb-group-name', text: g }),
+      groups[g].map(([name, info]) => el('button', { type: 'button', class: 'chip', title: 'Insert ' + name, on: { click: () => insert(name) } },
+        info.label, labelCount[info.label] > 1 ? el('span', { class: 'chip-id', text: name }) : null))));
+  });
+  palette.append(el('div', { class: 'fb-group' }, el('span', { class: 'fb-group-name', text: 'Math' }),
+    ['+', '\u2212', '\u00d7', '\u00f7', '(', ')'].map((op) => el('button', { type: 'button', class: 'chip op', 'aria-label': 'Insert ' + op, text: op, on: { click: () => insert(op) } })),
+    ['min(', 'max(', 'round(', 'if('].map((fn) => el('button', { type: 'button', class: 'chip fn', title: fn === 'if(' ? 'if(condition, value when true, value when false)' : fn + 'a, b)', text: fn + ' )', on: { click: () => insert(fn) } })),
+    el('button', { type: 'button', class: 'chip op', 'aria-label': 'Insert comma', text: ',', on: { click: () => insert(',') } })));
+  const numIn = el('input', { type: 'number', step: 'any', inputmode: 'decimal', 'aria-label': 'Number to insert', placeholder: '0.15' });
+  const addNum = () => { const n = parseFloat(numIn.value); if (isFinite(n)) { insert(String(n)); numIn.value = ''; } };
+  numIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addNum(); } });
+  palette.append(el('div', { class: 'fb-group' }, el('span', { class: 'fb-group-name', text: 'Number' }),
+    el('span', { class: 'chip-num' }, numIn, el('button', { type: 'button', class: 'chip', text: 'Insert', on: { click: addNum } }))));
+  const toggle = el('button', { type: 'button', class: 'btn-text', 'aria-expanded': String(open), text: open ? 'Hide blocks' : 'Insert blocks' });
+  if (!open) blocks.hidden = true;
+  toggle.addEventListener('click', () => {
+    const show = palette.hidden;
+    palette.hidden = !show;
+    if (!open) blocks.hidden = !show;
+    toggle.setAttribute('aria-expanded', String(show));
+    toggle.textContent = show ? 'Hide blocks' : 'Insert blocks';
+  });
+
+  function renderBlocks() {
+    blocks.textContent = '';
+    let toks;
+    try { toks = ROICalc.tokenize(ta.value); } catch (e) { return; }
+    const nm = namesMap({ reserved: true });
+    toks.forEach((t) => {
+      if (t.type === 'name') blocks.append(el('span', { class: 'b-name', text: nm[t.value] ? nm[t.value].label : t.value }));
+      else if (t.type === 'num') blocks.append(el('span', { class: 'b-num', text: String(t.value) }));
+      else blocks.append(el('span', { class: 'b-op', text: ROICalc.PRETTY[t.value] || t.value }));
+    });
+  }
+  function validate() {
+    renderBlocks();
+    const v = ta.value.trim();
+    status.className = 'fb-status';
+    ta.removeAttribute('aria-invalid');
+    if (!v) {
+      if (allowEmpty) { status.textContent = 'Empty, which is fine here.'; status.classList.add('is-quiet'); }
+      else { status.textContent = 'Add a formula: click the blocks below or type one.'; status.classList.add('is-error'); ta.setAttribute('aria-invalid', 'true'); }
+      return;
+    }
+    const nm = names(), r = ROICalc.check(v, nm);
+    if (!r.ok) {
+      let msg = r.message;
+      const all = namesMap({ reserved: true });
+      if (r.unknown && all[r.unknown] && !nm[r.unknown]) {
+        msg = all[r.unknown].group === 'Results'
+          ? `${qt(r.unknown)} is a final result, so it can\u2019t be used here.`
+          : `${qt(r.unknown)} is calculated further down. Use something calculated earlier, or move this step below it.`;
+      }
+      status.textContent = msg; status.classList.add('is-error'); ta.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    const res = ROICalc.compute(config), val = ROICalc.evaluate(r.tree, res.scope);
+    const k = typeof kind === 'function' ? kind() : kind;
+    status.textContent = val == null
+      ? 'Looks good. It shows \u201c\u2014\u201d until the fields it uses are filled in.'
+      : `Looks good. With the default values this is ${ROICalc.show(ROICalc.formatter(config), { format: k }, val, false)}.`;
+  }
+  validators.push(validate);
+  validate();
+  return el('div', { class: 'fb' }, blocks, ta, status, el('div', null, toggle), palette);
+}
+
+/* ===========================================================================
+   STEP 1 — WORDS
+   =========================================================================== */
+function renderWords(body) {
+  const c = config.content;
+  body.append(stepHead('Name and words', 'What visitors read. Keep it short. You can change any of it later.'));
+  const urlErr = el('p', { class: 'g-error', hidden: true, text: 'Links need to start with https://, mailto: or tel:. Otherwise the button won\u2019t go anywhere.' });
+  const checkUrl = (v) => { urlErr.hidden = !v || /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(v.trim()); };
+  const url = gText(c.cta.url, (v) => { c.cta.url = v.trim(); checkUrl(v); changed(); }, { type: 'url', placeholder: 'https://your-site.com/contact' });
+  checkUrl(c.cta.url);
+  const suggested = (TEMPLATES.find((t) => t.id === config.meta.template) || TEMPLATES[TEMPLATES.length - 1]).build().content.disclaimer || DISCLAIMER_GENERIC;
+  const disc = gText(c.disclaimer, (v) => { c.disclaimer = v; changed(); }, { multiline: true, rows: 4 });
+  body.append(el('div', { class: 'sec g-stack' },
+    gField('Calculator name', gText(c.title, (v) => { c.title = v; changed(); }), 'Shown as the title. A question works well, like \u201cWhat is a cleaning worth?\u201d'),
+    gField('Short description', gText(c.description, (v) => { c.description = v; changed(); }, { multiline: true, rows: 2 })),
+    el('div', { class: 'g-row' },
+      gField('Button text', gText(c.cta.label, (v) => { c.cta.label = v; changed(); }, { placeholder: 'Request a quote' })),
+      gField('Button link', url, null, urlErr)),
+    gSwitch('Open the link in a new tab', c.cta.newTab, (v) => { c.cta.newTab = v; changed(); }),
+    gField('Note under the result', disc, 'Always visible. It sets expectations about what the estimate means.',
+      el('div', null, el('button', { type: 'button', class: 'btn-text', text: 'Use the suggested note', on: { click: () => { c.disclaimer = suggested; disc.value = suggested; changed(); } } })))
+  ));
+}
+
+/* ===========================================================================
+   STEP 2 — MATH
+   =========================================================================== */
+function switchTemplate(id) {
+  if (snapshotOf(config) !== snapshot) {
+    const t = TEMPLATES.find((x) => x.id === id);
+    if (!confirm(`Switch to ${qt(t.name)}? This replaces your fields, formulas and texts. Colors, font and currency stay.`)) { renderStep(); return; }
+  }
+  config = makeConfig(id, config.theme, config.format);
+  snapshot = snapshotOf(config);
+  autoIds.clear(); openItem = null;
+  changed({ rerender: true });
+}
+
+function convertType(f, t) {
+  const was = f.type;
+  f.type = t;
+  if (t === 'cards' || t === 'segmented') {
+    if (!Array.isArray(f.options) || !f.options.length) {
+      f.options = [{ id: 'option1', label: 'Option 1', value: 1 }, { id: 'option2', label: 'Option 2', value: 2 }];
+    }
+    if (!f.options.some((o) => String(o.id) === String(f.default))) f.default = f.options[0].id;
+    ['prefix', 'unit', 'min', 'max', 'step', 'units', 'toggleLabel', 'allowZero', 'required'].forEach((k) => delete f[k]);
+    if (f.help && typeof f.help === 'object') f.help = f.help.off || '';
+  } else if (t === 'toggle') {
+    f.default = false;
+    f.toggleLabel = f.toggleLabel || f.label;
+    f.help = { off: typeof f.help === 'string' ? f.help : '', on: '' };
+    ['prefix', 'unit', 'min', 'max', 'step', 'units', 'options', 'allowZero', 'required'].forEach((k) => delete f[k]);
+  } else {
+    if (was === 'cards' || was === 'segmented' || was === 'toggle') f.default = 1;
+    if (t === 'slider') { if (f.min == null) f.min = 0; if (f.max == null) f.max = 100; if (f.step == null) f.step = 1; }
+    if (f.help && typeof f.help === 'object') f.help = f.help.off || '';
+    delete f.options; delete f.toggleLabel;
+  }
+}
+
+function addInput() {
+  const id = uniqueId('newField');
+  config.inputs.push({ id, label: 'New field', type: 'number', default: 1, min: 0, step: 1 });
+  autoIds.add(id); openItem = 'in:' + id; justAdded = id;
+  changed({ rerender: true, focus: '[data-autofocus]' });
+}
+function removeInput(i) {
+  const f = config.inputs[i], uses = countRefs(f.id);
+  if (uses && !confirm(`Remove ${qt(f.label || f.id)}? It\u2019s used in ${uses} formula${uses > 1 ? 's' : ''}, which will show an error until you fix ${uses > 1 ? 'them' : 'it'}.`)) return;
+  config.inputs.splice(i, 1);
+  changed({ rerender: true });
+}
+
+function fieldEditor(f, titleEl) {
+  const body = el('div', { class: 'item-body' });
+  const idIn = idInput(f, 'in:');
+  const lab = labelInput(f, 'in:', titleEl, idIn);
+  if (justAdded === f.id) { lab.setAttribute('data-autofocus', ''); justAdded = null; }
+  body.append(
+    gField('Label', lab),
+    gField('Name in formulas', idIn, 'Used when you write formulas. Letters and numbers, no spaces.', idIn._err),
+    gField('Type', gSelect(Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label })), f.type, (t) => { convertType(f, t); changed({ rerender: true }); }))
+  );
+
+  if (f.type === 'number' || f.type === 'slider') {
+    body.append(gSwitch('This is a money amount', f.prefix === 'currency', (v) => { if (v) f.prefix = 'currency'; else delete f.prefix; changed(); }));
+    body.append(el('div', { class: 'g-row' },
+      gField('Unit', gText(f.unit || '', (v) => { if (v.trim()) f.unit = v.trim(); else delete f.unit; changed(); }, { placeholder: 'kWh, %, h' })),
+      gField('Default value', gNumber(f.default, (v) => { f.default = v; changed(); }))));
+    const num = (k) => gNumber(f[k], (v) => { if (v == null) delete f[k]; else f[k] = v; changed(); });
+    body.append(el('div', { class: 'g-row' }, gField('Lowest', num('min')), gField('Highest', num('max')), gField('Step', num('step'))));
+    if (f.type === 'slider') body.append(el('p', { class: 'g-hint', text: 'The slider runs from lowest to highest. Visitors can still type any number in the box.' }));
+    body.append(gSwitch('Visitors must fill this in', f.required !== false, (v) => { if (v) delete f.required; else f.required = false; changed(); }));
+    body.append(gSwitch('Zero is a valid answer', !!f.allowZero, (v) => { if (v) f.allowZero = true; else delete f.allowZero; changed(); }));
+    const hasUnits = Array.isArray(f.units) && f.units.length > 1;
+    body.append(gSwitch('Let visitors switch units', hasUnits, (v) => {
+      if (v) f.units = [{ label: f.unit || 'unit', factor: 1 }, { label: 'other unit', factor: 1 }];
+      else delete f.units;
+      changed({ rerender: true });
+    }));
+    if (hasUnits) {
+      body.append(el('p', { class: 'g-hint', text: `Values are stored in the first unit. For each other unit, enter how many ${f.units[0].label || 'base units'} one of it equals. You can type an assumption name instead of a number.` }));
+      f.units.forEach((u, ui) => {
+        const row = el('div', { class: 'opt-row unit-row' });
+        row.append(gField(ui === 0 ? 'Base unit' : 'Unit', gText(u.label, (v) => { u.label = v; changed(); })));
+        if (ui > 0) {
+          row.append(gField('Equals', gText(String(u.factor), (v) => {
+            const t = v.trim(), n = parseFloat(t);
+            u.factor = /^[A-Za-z_]/.test(t) ? t : (isFinite(n) && n > 0 ? n : 1);
+            changed();
+          }, { mono: true })));
+          row.append(gField('Step', gNumber(u.step, (v) => { if (v == null) delete u.step; else u.step = v; changed(); })));
+          if (f.units.length > 2) row.append(el('div', { class: 'opt-foot' }, el('span'), el('button', { type: 'button', class: 'btn-text', text: 'Remove unit', on: { click: () => { f.units.splice(ui, 1); changed({ rerender: true }); } } })));
+        }
+        body.append(row);
+      });
+      if (f.units.length < 4) body.append(el('div', null, el('button', { type: 'button', class: 'btn-text', text: 'Add a unit', on: { click: () => { f.units.push({ label: 'unit', factor: 1 }); changed({ rerender: true }); } } })));
+    }
+  }
+
+  if (f.type === 'cards' || f.type === 'segmented') {
+    body.append(el('p', { class: 'subhead', text: 'Choices' }),
+      el('p', { class: 'g-hint', text: 'Each choice carries the number used in formulas. For \u201cModerate dirt = 15% loss\u201d, enter 0.15.' }));
+    const group = uid('def');
+    f.options.forEach((o, oi) => {
+      const cards = f.type === 'cards';
+      const row = el('div', { class: 'opt-row' + (cards ? ' cards' : '') });
+      row.append(gField('Choice', gText(o.label, (v) => { o.label = v; changed(); })));
+      row.append(gField('Value', gNumber(o.value, (v) => { o.value = v == null ? 0 : v; changed(); })));
+      if (cards) {
+        row.append(el('div', { class: 'opt-wide' }, gField('Short note', gText(o.badge || '', (v) => { o.badge = v; changed(); }, { placeholder: '~15% loss' }))));
+        row.append(el('div', { class: 'opt-wide' }, gField('Description', gText(o.description || '', (v) => { o.description = v; changed(); }))));
+      }
+      const radio = el('input', { type: 'radio', name: group });
+      radio.checked = String(f.default) === String(o.id);
+      radio.addEventListener('change', () => { if (radio.checked) { f.default = o.id; changed(); } });
+      row.append(el('div', { class: 'opt-foot' },
+        el('label', { class: 'g-hint', style: 'display:inline-flex;gap:6px;align-items:center;cursor:pointer' }, radio, 'Selected by default'),
+        el('button', { type: 'button', class: 'btn-text', text: 'Remove', disabled: f.options.length <= 2 ? true : null, on: { click: () => {
+          f.options.splice(oi, 1);
+          if (!f.options.some((x) => String(x.id) === String(f.default))) f.default = f.options[0].id;
+          changed({ rerender: true });
+        } } })));
+      body.append(row);
+    });
+    body.append(el('div', null, el('button', { type: 'button', class: 'btn-text', text: 'Add a choice', on: { click: () => {
+      let k = f.options.length + 1;
+      while (f.options.some((o) => String(o.id) === 'option' + k)) k++;
+      f.options.push({ id: 'option' + k, label: 'New choice', value: 0 });
+      changed({ rerender: true });
+    } } })));
+  }
+
+  if (f.type === 'toggle') {
+    if (!f.help || typeof f.help !== 'object') f.help = { off: typeof f.help === 'string' ? f.help : '', on: '' };
+    body.append(
+      gField('Switch text', gText(f.toggleLabel || '', (v) => { f.toggleLabel = v; changed(); }, { placeholder: 'I know my annual production' })),
+      gSwitch('On by default', !!f.default, (v) => { f.default = v; changed(); }),
+      el('p', { class: 'g-hint', text: 'In formulas the switch counts as 1 when on and 0 when off. Use it with if(), like if(knowsProduction, a, b).' }),
+      gField('Help text when off', gText(f.help.off, (v) => { f.help.off = v; changed(); })),
+      gField('Help text when on', gText(f.help.on, (v) => { f.help.on = v; changed(); })));
+  } else {
+    body.append(gField('Help text', gText(typeof f.help === 'string' ? f.help : '', (v) => { f.help = v; changed(); }), 'Optional. Show live values with braces, like {production}.'));
+  }
+
+  const toggles = config.inputs.filter((x) => x.type === 'toggle' && x.id !== f.id);
+  if (toggles.length || f.showIf) {
+    const opts = [{ value: '', label: 'Always' }];
+    toggles.forEach((t) => {
+      opts.push({ value: t.id, label: `When ${qt(t.toggleLabel || t.label)} is on` });
+      opts.push({ value: `${t.id} == 0`, label: `When ${qt(t.toggleLabel || t.label)} is off` });
+    });
+    if (f.showIf && !opts.some((o) => o.value === f.showIf)) opts.push({ value: f.showIf, label: 'Custom: ' + f.showIf });
+    body.append(gField('Show this field', gSelect(opts, f.showIf || '', (v) => { if (v) f.showIf = v; else delete f.showIf; changed(); })));
+  }
+  return body;
+}
+
+function itemList(arr, prefix, titleOf, metaOf, editor, onRemove) {
+  const list = el('div', { class: 'items' });
+  arr.forEach((x, i) => {
+    const key = () => prefix + x.id;
+    const open = openItem === key();
+    const title = el('span', { class: 'item-title', text: titleOf(x) });
+    const toggle = el('button', {
+      type: 'button', class: 'item-toggle', 'aria-expanded': String(open), 'data-key': key(),
+      on: { click: () => { const k = key(); openItem = openItem === k ? null : k; renderStep(`[data-key="${k}"]`); } }
+    }, title, el('span', { class: 'item-meta', text: metaOf(x) }));
+    const item = el('div', { class: 'item' + (open ? ' is-open' : '') },
+      el('div', { class: 'item-head' }, toggle, el('div', { class: 'item-tools' },
+        iconBtn('\u2191', 'Move up', () => move(arr, i, -1), i === 0),
+        iconBtn('\u2193', 'Move down', () => move(arr, i, 1), i === arr.length - 1),
+        iconBtn('\u2715', 'Remove', () => onRemove(i)))));
+    if (open) item.append(editor(x, title, i));
+    list.append(item);
+  });
+  return list;
+}
+
+function stepEditor(s, titleEl, i) {
+  const idIn = idInput(s, 'step:');
+  const lab = labelInput(s, 'step:', titleEl, idIn);
+  if (justAdded === s.id) { lab.setAttribute('data-autofocus', ''); justAdded = null; }
+  return el('div', { class: 'item-body' },
+    el('div', { class: 'g-row' }, gField('Label', lab), gField('Name in formulas', idIn, null, idIn._err)),
+    el('div', { class: 'g-field' }, el('span', { class: 'g-label', text: 'Formula' }),
+      formulaBuilder({ get: () => s.expr, set: (v) => { s.expr = v; }, names: () => namesMap({ upToStep: i }), kind: () => s.format || 'number', open: false, label: 'Formula for ' + (s.label || s.id) })),
+    el('div', { class: 'g-row' },
+      gField('Show as', gSelect([{ value: 'number', label: 'Number' }, { value: 'currency', label: 'Money' }, { value: 'percent', label: 'Percent' }], s.format || 'number', (v) => { s.format = v; changed(); })),
+      gField('Unit', gText(s.unit || '', (v) => { if (v.trim()) s.unit = v.trim(); else delete s.unit; changed(); }, { placeholder: 'kWh' }))));
+}
+
+function renderMath(body) {
+  body.append(stepHead('What it calculates', 'Start from a model and adjust it. Every number has a sensible default.'));
+
+  // A. Models
+  const tplName = uid('tpl');
+  body.append(section('Start from a model', null, el('div', { class: 'tpl-list', role: 'radiogroup', 'aria-label': 'Models' },
+    TEMPLATES.map((t) => {
+      const r = el('input', { type: 'radio', name: tplName, value: t.id });
+      r.checked = config.meta.template === t.id;
+      r.addEventListener('change', () => switchTemplate(t.id));
+      return el('label', { class: 'tpl' }, r, el('span', { class: 'tpl-name', text: t.name }), el('span', { class: 'tpl-desc', text: t.desc }));
+    }))));
+
+  // B. Fields
+  body.append(section('What does your client enter?', 'Each field is something your visitor types or picks.',
+    itemList(config.inputs, 'in:', (f) => f.label || 'Untitled field', (f) => TYPE_LABELS[f.type] || f.type, fieldEditor, removeInput),
+    el('button', { type: 'button', class: 'btn-quiet', text: 'Add a field', on: { click: addInput } })));
+
+  // C. Assumptions
+  const consts = el('div');
+  config.constants.forEach((c, i) => {
+    const idIn = idInput(c, 'const:');
+    const lab = labelInput(c, 'const:', null, idIn);
+    if (justAdded === c.id) { lab.setAttribute('data-autofocus', ''); justAdded = null; }
+    consts.append(el('div', { class: 'plain-row' },
+      gField('Assumption', lab), gField('Name in formulas', idIn, null, idIn._err),
+      gField('Value', gNumber(c.value, (v) => { c.value = v; changed(); })),
+      gField('Unit', gText(c.unit || '', (v) => { c.unit = v; changed(); })),
+      iconBtn('\u2715', 'Remove ' + (c.label || c.id), () => {
+        const uses = countRefs(c.id);
+        if (uses && !confirm(`Remove ${qt(c.label || c.id)}? It\u2019s used in ${uses} formula${uses > 1 ? 's' : ''}.`)) return;
+        config.constants.splice(i, 1); changed({ rerender: true });
+      })));
+  });
+  body.append(section('Fixed assumptions', 'Numbers that stay the same for every visitor, like average production per kW.', consts,
+    el('button', { type: 'button', class: 'btn-quiet', style: 'margin-top:12px', text: 'Add an assumption', on: { click: () => {
+      const id = uniqueId('assumption');
+      config.constants.push({ id, label: 'New assumption', value: 1, unit: '' });
+      autoIds.add(id); justAdded = id;
+      changed({ rerender: true, focus: '[data-autofocus]' });
+    } } })));
+
+  // D. Steps
+  const det = el('details', { class: 'sec', open: config.steps.length ? true : null },
+    el('summary', { text: 'Behind the scenes' }),
+    el('p', { class: 'sec-note', text: 'In-between results you can reuse in formulas and show in the breakdown. Optional. Each step can use the ones above it.' }),
+    itemList(config.steps, 'step:', (s) => s.label || 'Untitled step', (s) => s.id, stepEditor, (i) => {
+      const s = config.steps[i], uses = countRefs(s.id);
+      if (uses && !confirm(`Remove ${qt(s.label || s.id)}? It\u2019s used in ${uses} formula${uses > 1 ? 's' : ''}.`)) return;
+      config.steps.splice(i, 1); changed({ rerender: true });
+    }),
+    el('button', { type: 'button', class: 'btn-quiet', text: 'Add a step', on: { click: () => {
+      const id = uniqueId('step');
+      config.steps.push({ id, label: 'New step', expr: '', format: 'number' });
+      autoIds.add(id); openItem = 'step:' + id; justAdded = id;
+      changed({ rerender: true, focus: '[data-autofocus]' });
+    } } }));
+  body.append(det);
+
+  // E–G. Gain, spend, investment
+  const F = config.formulas;
+  body.append(section('How much does your client gain?', 'The total value your service creates. Use fields, assumptions and steps.',
+    gField('Results are calculated', gSeg([{ value: 'year', label: 'Per year' }, { value: 'month', label: 'Per month' }], config.content.period, (v) => { config.content.period = v; changed(); }, 'Period')),
+    el('div', { class: 'g-field', style: 'margin-top:14px' }, el('span', { class: 'g-label', text: 'Gain formula' }),
+      formulaBuilder({ get: () => F.benefit, set: (v) => { F.benefit = v; }, names: () => namesMap(), label: 'Gain formula' }))));
+  body.append(section('How much does your client spend?', 'What they pay you over the same period.',
+    formulaBuilder({ get: () => F.cost, set: (v) => { F.cost = v; }, names: () => namesMap(), label: 'Cost formula' })));
+  body.append(section('One-time investment', 'For setup fees or equipment. Used to work out payback. Leave it empty if there\u2019s none.',
+    formulaBuilder({ get: () => F.investment, set: (v) => { F.investment = v; }, names: () => namesMap(), allowEmpty: true, open: false, label: 'Investment formula' })));
+
+  // H. Results
+  const o = config.outputs;
+  const heroLabel = gText(o.heroLabel, (v) => { o.heroLabel = v; changed(); });
+  const rows = el('div', { class: 'items' });
+  o.breakdown.forEach((r, i) => {
+    rows.append(el('div', { class: 'item' }, el('div', { class: 'item-body', style: 'padding-left:0' },
+      el('div', { class: 'item-head' }, el('span', { class: 'item-title', style: 'flex:1', text: 'Row ' + (i + 1) }),
+        el('div', { class: 'item-tools' },
+          iconBtn('\u2191', 'Move up', () => move(o.breakdown, i, -1), i === 0),
+          iconBtn('\u2193', 'Move down', () => move(o.breakdown, i, 1), i === o.breakdown.length - 1),
+          iconBtn('\u2715', 'Remove row', () => { o.breakdown.splice(i, 1); changed({ rerender: true }); }))),
+      el('div', { class: 'g-row' },
+        gField('Label', gText(r.label, (v) => { r.label = v; changed(); })),
+        gField('Show as', gSelect([{ value: 'auto', label: 'Automatic' }, { value: 'number', label: 'Number' }, { value: 'currency', label: 'Money' }, { value: 'percent', label: 'Percent' }],
+          r.format || 'auto', (v) => { if (v === 'auto') delete r.format; else r.format = v; changed(); }))),
+      el('div', { class: 'g-field' }, el('span', { class: 'g-label', text: 'Value' }),
+        formulaBuilder({ get: () => r.value, set: (v) => { r.value = v; }, names: () => namesMap({ reserved: true }), kind: () => r.format && r.format !== 'auto' ? r.format : ROICalc.kindOf(config, String(r.value).trim()).format, open: false, label: 'Value for row ' + (i + 1) })))));
+  });
+  body.append(section('What the result shows', 'The big number, the sentence under it and the breakdown.',
+    el('div', { class: 'g-stack' },
+      gField('Big number', gSeg([{ value: 'net', label: 'Net gain' }, { value: 'roi', label: 'ROI %' }, { value: 'benefit', label: 'Total gain' }, { value: 'payback', label: 'Payback' }], o.hero, (v) => {
+        if (!o.heroLabel || Object.values(HERO_LABELS).includes(o.heroLabel)) { o.heroLabel = HERO_LABELS[v]; heroLabel.value = o.heroLabel; }
+        o.hero = v; changed();
+      }, 'Big number')),
+      gField('Label above the number', heroLabel, '{period} becomes \u201cyear\u201d or \u201cmonth\u201d.'),
+      gField('Sentence under the number', gText(o.heroSentence, (v) => { o.heroSentence = v; changed(); }), 'Use {roi}, {net}, {payback} or any field name in braces. Hidden while a value is missing.'),
+      el('p', { class: 'subhead', text: 'Breakdown' }), rows,
+      el('div', null, el('button', { type: 'button', class: 'btn-quiet', text: 'Add a row', on: { click: () => { o.breakdown.push({ label: 'New row', value: 'net' }); changed({ rerender: true }); } } })),
+      gSwitch('Add payback time to the breakdown', o.payback.enabled, (v) => { o.payback.enabled = v; changed(); }),
+      gField('When fields are empty', gText(o.states.empty, (v) => { o.states.empty = v; changed(); }, { multiline: true, rows: 2 }), 'The calculator also lists which fields are still missing.'),
+      gField('When the result is negative', gText(o.states.negative, (v) => { o.states.negative = v; changed(); }, { multiline: true, rows: 2 }), 'Suggest what to change, so visitors don\u2019t just leave.'))));
+}
+
+/* ===========================================================================
+   STEP 3 — LOOK
+   =========================================================================== */
+const SWATCHES = ['#0E3B17', '#1F3A93', '#0F5257', '#5B2A86', '#9A3412', '#222222', '#0369A1', '#F2C14E'];
+const CURRENCIES = [
+  { value: 'USD', label: 'US dollar (USD)', locale: 'en-US' },
+  { value: 'BRL', label: 'Brazilian real (BRL)', locale: 'pt-BR' },
+  { value: 'EUR', label: 'Euro (EUR)', locale: 'de-DE' },
+  { value: 'GBP', label: 'British pound (GBP)', locale: 'en-GB' }
+];
+const LOCALES = [['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['pt-BR', 'Portugu\u00eas (Brasil)'], ['es-ES', 'Espa\u00f1ol'], ['de-DE', 'Deutsch'], ['fr-FR', 'Fran\u00e7ais']];
+const LAYOUT_ICONS = {
+  split: '<svg viewBox="0 0 64 40" aria-hidden="true"><rect x="1" y="1" width="62" height="38" rx="3" fill="none" stroke="currentColor"/><rect x="6" y="7" width="20" height="3" fill="currentColor"/><rect x="6" y="14" width="22" height="5" rx="1" fill="none" stroke="currentColor"/><rect x="6" y="23" width="22" height="5" rx="1" fill="none" stroke="currentColor"/><rect x="34" y="6" width="24" height="28" rx="2" fill="currentColor"/></svg>',
+  stacked: '<svg viewBox="0 0 64 40" aria-hidden="true"><rect x="1" y="1" width="62" height="38" rx="3" fill="none" stroke="currentColor"/><rect x="6" y="5" width="20" height="3" fill="currentColor"/><rect x="6" y="11" width="52" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="6" y="18" width="52" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="6" y="25" width="52" height="10" rx="2" fill="currentColor"/></svg>',
+  compact: '<svg viewBox="0 0 64 40" aria-hidden="true"><rect x="1" y="1" width="62" height="38" rx="3" fill="none" stroke="currentColor"/><rect x="6" y="6" width="25" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="33" y="6" width="25" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="6" y="13" width="25" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="33" y="13" width="25" height="4" rx="1" fill="none" stroke="currentColor"/><rect x="6" y="22" width="52" height="12" rx="2" fill="currentColor"/></svg>'
+};
+
+function colorPicker(get, set, label) {
+  const pick = el('input', { type: 'color', 'aria-label': label });
+  const hex = el('input', { class: 'g-input', type: 'text', 'aria-label': label + ' as HEX', maxlength: '7', spellcheck: 'false' });
+  const err = el('p', { class: 'g-error', hidden: true, text: 'Enter a HEX color like #0E3B17.' });
+  const sync = () => { const v = normHex(get()) || '#000000'; pick.value = v.toLowerCase(); if (document.activeElement !== hex) hex.value = v; };
+  pick.addEventListener('input', () => { set(pick.value.toUpperCase()); hex.value = pick.value.toUpperCase(); err.hidden = true; });
+  hex.addEventListener('input', () => { const v = normHex(hex.value); err.hidden = !!v || hex.value.length < 4; if (v) { set(v); pick.value = v.toLowerCase(); } });
+  hex.addEventListener('blur', sync);
+  sync();
+  return { node: el('div', null, el('div', { class: 'color-row' }, pick, hex), err), sync };
+}
+
+function renderLook(body) {
+  const t = config.theme;
+  if (!loadedFonts.has('*')) {
+    loadedFonts.add('*');
+    document.head.append(el('link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?' + FONTS.map((f) => 'family=' + f.q).join('&') + '&display=swap' }));
+  }
+  body.append(stepHead('Colors, type and layout', 'Pick one color. The builder works out the rest and keeps every text readable.'));
+
+  // Main color
+  let swatchBtns = [];
+  const main = colorPicker(() => t.primary, (v) => { t.primary = v; swatchBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hex === v))); changed(); }, 'Main color');
+  swatchBtns = SWATCHES.map((hx) => el('button', {
+    type: 'button', class: 'swatch', style: 'background:' + hx, 'aria-label': 'Use ' + hx, 'data-hex': hx, 'aria-pressed': String(normHex(t.primary) === hx),
+    on: { click: () => { t.primary = hx; main.sync(); swatchBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hex === hx))); changed(); } }
+  }));
+  const accentWrap = el('div');
+  const drawAccent = () => {
+    accentWrap.textContent = '';
+    if (t.accent && t.accent !== 'auto') accentWrap.append(colorPicker(() => t.accent, (v) => { t.accent = v; changed(); }, 'Accent color').node);
+  };
+  drawAccent();
+  body.append(section('Main color', 'Used for the result panel and selected options.',
+    main.node, el('div', { class: 'swatches', role: 'group', 'aria-label': 'Suggested colors' }, swatchBtns),
+    el('div', { class: 'g-field', style: 'margin-top:18px' }, el('span', { class: 'g-label', text: 'Accent for the big number and button' }),
+      gSeg([{ value: 'auto', label: 'Automatic' }, { value: 'custom', label: 'Pick a color' }], t.accent && t.accent !== 'auto' ? 'custom' : 'auto', (v) => {
+        t.accent = v === 'auto' ? 'auto' : (normHex(t.accent) || '#F5B301'); drawAccent(); changed();
+      }, 'Accent'), accentWrap),
+    el('div', { id: 'contrast' })));
+
+  // Font
+  const fontName = uid('font');
+  body.append(section('Font', null, el('div', { class: 'font-list', role: 'radiogroup', 'aria-label': 'Font' }, FONTS.map((f) => {
+    const r = el('input', { type: 'radio', name: fontName, value: f.name });
+    r.checked = t.font === f.name;
+    r.addEventListener('change', () => { t.font = f.name; changed(); });
+    return el('label', { class: 'font-opt' }, r,
+      el('span', null, el('span', { class: 'font-name', style: `font-family:${fontStack(f.name)}`, text: f.name }), el('br'),
+        el('span', { class: 'font-sample', style: `font-family:${fontStack(f.name)}`, text: 'Estimated net gain $1,280' })), el('span'));
+  }))));
+
+  // Layout, corners, theme
+  const layoutName = uid('layout');
+  body.append(section('Layout', null, el('div', { class: 'layout-list', role: 'radiogroup', 'aria-label': 'Layout' },
+    [['split', 'Side by side', 'Fields on the left, result on the right. Stacks on phones.'], ['stacked', 'Stacked', 'Fields first, result below. Good for narrow columns.'], ['compact', 'Compact', 'Fields in two columns, smaller result. Good for sidebars.']].map(([v, name, desc]) => {
+      const r = el('input', { type: 'radio', name: layoutName, value: v });
+      r.checked = t.layout === v;
+      r.addEventListener('change', () => { t.layout = v; changed(); });
+      return el('label', { class: 'layout-opt' }, r, el('span', null, el('strong', { style: 'font-weight:500', text: name }), el('br'), el('span', { class: 'g-hint', text: desc })), el('span', { html: LAYOUT_ICONS[v] }));
+    }))));
+  body.append(section('Corners and theme', null, el('div', { class: 'g-stack' },
+    gField('Corners', gSeg([{ value: 'sharp', label: 'Square' }, { value: 'soft', label: 'Soft' }, { value: 'round', label: 'Round' }], t.radius, (v) => { t.radius = v; changed(); }, 'Corners')),
+    gField('Theme', gSeg([{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }, { value: 'auto', label: 'Match the visitor\u2019s device' }], t.mode, (v) => { t.mode = v; changed(); renderContrast(); }, 'Theme')))));
+
+  // Currency and number format
+  const F = ROICalc.formatter(config);
+  body.append(section('Currency and numbers', null, el('div', { class: 'g-row' },
+    gField('Currency', gSelect(CURRENCIES, config.format.currency, (v) => {
+      config.format.currency = v; config.format.locale = CURRENCIES.find((c) => c.value === v).locale; changed({ rerender: true });
+    })),
+    gField('Number format', gSelect(LOCALES.map(([v, l]) => ({ value: v, label: `${l}: ${new Intl.NumberFormat(v).format(1234.5)}` })), config.format.locale, (v) => { config.format.locale = v; changed({ rerender: true }); }))),
+    el('p', { class: 'g-hint', style: 'margin-top:8px', text: `Example: ${F.currency(1280)} and ${F.currency(0.22)}` })));
+
+  // Logo
+  const file = el('input', { type: 'file', accept: 'image/png,image/svg+xml,image/jpeg,image/webp', hidden: true });
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    if (f.size > 1024 * 1024) { toast('That file is over 1 MB. Try a smaller PNG or an SVG.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      t.logo = String(reader.result);
+      changed({ rerender: true });
+      if (f.size > 200 * 1024) toast(`Logo added. It\u2019s ${Math.round(f.size / 1024)} KB; under 200 KB keeps the export light.`);
+    };
+    reader.readAsDataURL(f);
+  });
+  body.append(section('Logo', 'Optional. Shown above the title and embedded in the code, so there\u2019s nothing extra to upload.',
+    el('div', { class: 'logo-box' }, t.logo ? el('img', { src: t.logo, alt: 'Current logo' }) : null,
+      el('button', { type: 'button', class: 'btn-quiet', text: t.logo ? 'Replace logo' : 'Upload logo', on: { click: () => file.click() } }),
+      t.logo ? el('button', { type: 'button', class: 'btn-text', text: 'Remove logo', on: { click: () => { t.logo = null; changed({ rerender: true }); } } }) : null, file),
+    el('p', { class: 'g-hint', style: 'margin-top:8px', text: 'PNG, SVG, JPG or WebP, up to 1 MB.' })));
+  renderContrast();
+}
+
+function renderContrast() {
+  const box = $('#contrast');
+  if (!box) return;
+  box.textContent = '';
+  const mode = config.theme.mode;
+  const modes = mode === 'auto' ? [['Light theme', false], ['Dark theme', true]] : [[mode === 'dark' ? 'Dark theme' : 'Light theme', mode === 'dark']];
+  const wrap = el('div', { class: 'contrast' });
+  modes.forEach(([name, dark]) => {
+    const d = deriveTokens(config.theme, dark);
+    const fails = d.checks.filter((c) => !c.pass).length;
+    wrap.append(el('p', { class: 'contrast-mode', text: `${name}: ${fails ? fails + ' check' + (fails > 1 ? 's' : '') + ' below WCAG AA' : 'every text passes WCAG AA'}` }));
+    d.checks.forEach((c) => wrap.append(el('div', { class: 'contrast-row' },
+      el('span', { class: 'pair', style: `background:${c.bg};color:${c.fg}`, 'aria-hidden': 'true', text: 'Aa' }),
+      el('span', { text: c.name }),
+      el('span', { class: 'ratio', text: c.ratio.toFixed(1) + ':1' }),
+      el('span', { class: 'verdict ' + (c.pass ? 'pass' : 'fail'), text: c.pass ? 'Pass' : 'Below ' + c.min + ':1' }))));
+    d.notes.forEach((n) => wrap.append(el('p', { class: 'notice', text: 'Adjusted for readability. ' + n })));
+  });
+  box.append(el('p', { class: 'g-label', style: 'margin:20px 0 0', text: 'Contrast check' }), wrap);
+}
+
+/* ===========================================================================
+   STEP 4 — EXPORT
+   =========================================================================== */
+const EXPORTS = {
+  html: { label: 'HTML file', desc: 'One file with everything inside. Upload it anywhere, or open it in a browser.' },
+  embed: { label: 'Embed', desc: 'An iframe snippet for website builders. It resizes itself to fit the calculator.' },
+  wc: { label: 'Web Component', desc: 'A script that adds a <roi-calculator> tag. Styles stay isolated from your site.' },
+  react: { label: 'React', desc: 'A drop-in component with no dependencies besides React.' },
+  json: { label: 'Config file', desc: 'Your settings. Import this file later to keep editing.' }
+};
+function exportData() {
+  const c = clone(config), slug = fileSlug(c);
+  switch (exportTab) {
+    case 'embed': return { code: buildEmbed(c, embedMode, embedUrl), filename: slug + '-embed-snippet.html', mime: 'text/html' };
+    case 'wc': return { code: buildWebComponent(c), filename: 'roi-calculator.js', mime: 'text/javascript' };
+    case 'react': return { code: buildReact(c), filename: 'RoiCalculator.jsx', mime: 'text/javascript' };
+    case 'json': return { code: buildJSON(c), filename: slug + '.json', mime: 'application/json' };
+    default: return { code: buildHTML(c), filename: slug + '.html', mime: 'text/html' };
+  }
+}
+function formulaIssues() {
+  const issues = [];
+  const test = (expr, names, where, allowEmpty) => {
+    if (!expr || !String(expr).trim()) { if (!allowEmpty) issues.push(`${where} is empty.`); return; }
+    const r = ROICalc.check(expr, names);
+    if (!r.ok) issues.push(`${where}: ${r.message}`);
+  };
+  config.steps.forEach((s, i) => test(s.expr, namesMap({ upToStep: i }), `Step ${qt(s.label || s.id)}`));
+  test(config.formulas.benefit, namesMap(), 'Gain formula');
+  test(config.formulas.cost, namesMap(), 'Cost formula');
+  test(config.formulas.investment, namesMap(), 'Investment formula', true);
+  config.outputs.breakdown.forEach((r) => test(r.value, namesMap({ reserved: true }), `Breakdown row ${qt(r.label)}`));
+  return issues;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    const ta = el('textarea', { style: 'position:fixed;opacity:0' }); ta.value = text; document.body.append(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    ta.remove(); return ok;
+  }
+}
+function download(text, filename, mime) {
+  const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: filename });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function renderExport(body) {
+  body.append(stepHead('Export', 'Every format is built from the same settings, so they all match the preview.'));
+  const issues = formulaIssues();
+  if (issues.length) {
+    body.append(el('div', { class: 'warn' }, el('strong', { text: `${issues.length} formula${issues.length > 1 ? 's need' : ' needs'} attention. ` }),
+      'The calculator shows \u201c\u2014\u201d where they\u2019re used. ',
+      el('button', { type: 'button', class: 'btn-text', text: 'Fix in Math', on: { click: () => goStep(1) } }),
+      el('ul', { style: 'margin:8px 0 0;padding-left:18px' }, issues.map((i) => el('li', { text: i })))));
+  }
+  body.append(gSeg(Object.entries(EXPORTS).map(([value, x]) => ({ value, label: x.label })), exportTab, (v) => { exportTab = v; renderExportPanel(); }, 'Format'));
+  body.append(el('div', { id: 'export-panel', style: 'margin-top:20px' }));
+  renderExportPanel();
+  body.append(section('Keep editing later', 'Your work saves in this browser. To move it elsewhere, download the config file and import it.',
+    el('button', { type: 'button', class: 'btn-quiet', text: 'Import a config file', on: { click: () => $('#import-file').click() } })));
+}
+
+function renderExportPanel() {
+  const p = $('#export-panel');
+  if (!p) return;
+  p.textContent = '';
+  p.append(el('p', { class: 'g-hint', style: 'font-size:14px;margin-bottom:14px', text: EXPORTS[exportTab].desc }));
+  if (exportTab === 'embed') {
+    p.append(gSeg([{ value: 'url', label: 'Hosted file (recommended)' }, { value: 'srcdoc', label: 'No hosting needed' }], embedMode, (v) => { embedMode = v; renderExportPanel(); }, 'Embed type'));
+    if (embedMode === 'url') {
+      p.append(el('div', { style: 'margin-top:14px' }, gField('Where the HTML file will live',
+        gText(embedUrl, (v) => { embedUrl = v.trim(); renderExportCode(); }, { type: 'url' }),
+        'Download the HTML file, upload it to your site or to Cloudflare Pages, GitHub Pages or Netlify, then paste its address here.')));
+    } else {
+      p.append(el('p', { class: 'g-hint', style: 'margin-top:10px', text: 'The whole calculator goes inside the snippet. Easier, but the snippet is long, and some builders limit embed size.' }));
+    }
+  }
+  if (exportTab === 'wc') p.append(el('p', { class: 'g-hint', style: 'margin-bottom:12px', text: 'Upload roi-calculator.js to your site, then add <script src="roi-calculator.js" defer><\/script> and <roi-calculator></roi-calculator> where you want it.' }));
+  p.append(el('p', { class: 'g-hint', id: 'export-size', style: 'margin-bottom:6px' }));
+  p.append(el('pre', { class: 'code', tabindex: '0', 'aria-label': 'Code' }, el('code', { id: 'export-code' })));
+  p.append(el('div', { class: 'export-actions' },
+    el('button', { type: 'button', class: 'btn-primary', text: 'Copy code', on: { click: async () => { toast((await copyText(exportData().code)) ? 'Code copied.' : 'Couldn\u2019t copy. Select the code and copy it by hand.'); } } }),
+    el('button', { type: 'button', class: 'btn-quiet', text: 'Download file', on: { click: () => { const d = exportData(); download(d.code, d.filename, d.mime); toast('Downloaded ' + d.filename + '.'); } } })));
+  if (exportTab === 'embed') {
+    p.append(el('p', { class: 'subhead', style: 'margin-top:24px', text: 'Where to paste it' }), el('dl', { class: 'howto' },
+      [['Webflow', 'Add a Code Embed element, paste the snippet and publish. Embeds are capped at 50,000 characters, so use the hosted option.'],
+       ['Framer', 'Insert an Embed, choose HTML, paste the snippet. Set width to fill and give it a height of about 700 px.'],
+       ['WordPress', 'In the block editor, add a Custom HTML block and paste the snippet.'],
+       ['Wix', 'Add an Embed Code element, choose Embed HTML, then Code, and paste. Wix wraps embeds in its own frame, so set the element\u2019s height by hand.'],
+       ['Squarespace', 'Add a Code block and paste the snippet. If your plan blocks scripts, the calculator still works at a fixed height.']]
+        .map(([k, v]) => el('div', null, el('dt', { text: k }), el('dd', { text: v })))));
+  }
+  renderExportCode();
+}
+function renderExportCode() {
+  const code = $('#export-code');
+  if (!code) return;
+  const d = exportData();
+  code.textContent = d.code;
+  let note = `${d.filename}, ${(d.code.length / 1024).toFixed(1)} KB`;
+  if (exportTab === 'embed' && embedMode === 'srcdoc' && d.code.length > 50000) note += `. That\u2019s ${d.code.length.toLocaleString('en-US')} characters, over Webflow\u2019s 50,000 limit; use the hosted option there.`;
+  $('#export-size').textContent = note;
+}
+
+/* ===========================================================================
+   STEP SHELL, PREVIEW AND GLOBAL CONTROLS
+   =========================================================================== */
+function renderStep(focusSel) {
+  const body = $('#step-body'), y = window.scrollY;
+  body.style.minHeight = body.offsetHeight + 'px';
+  validators = [];
+  body.textContent = '';
+  [renderWords, renderMath, renderLook, renderExport][step](body);
+  body.style.minHeight = '';
+  window.scrollTo(0, y);
+  $$('#steps-nav button').forEach((b, i) => { if (i === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+  $('#prev-btn').disabled = step === 0;
+  $('#prev-btn').style.visibility = step === 0 ? 'hidden' : 'visible';
+  $('#next-btn').style.display = step === 3 ? 'none' : '';
+  $('#next-btn').textContent = step < 3 ? 'Next: ' + STEP_NAMES[step + 1] : '';
+  if (focusSel) { const f = body.querySelector(focusSel); if (f) f.focus({ preventScroll: false }); }
+}
+function goStep(i) {
+  step = Math.max(0, Math.min(3, i));
+  openItem = null;
+  renderStep();
+  const top = $('#build').getBoundingClientRect().top;
+  if (top < 0) $('#build').scrollIntoView({ block: 'start' });
+  $('#step-body').focus({ preventScroll: true });
+}
+
+$('#rc-base').textContent = RC_CSS;
+const heroConfig = makeConfig('solar-cleaning');
+$('#hero-vars').textContent = varsCSS(heroConfig.theme, '#hero-scope');
+ensureFont(heroConfig.theme.font);
+ROICalc.mount($('#hero-calc'), heroConfig);
+const preview = ROICalc.mount($('#pv-calc'), clone(config));
+function applyPreview() {
+  ensureFont(config.theme.font);
+  $('#pv-vars').textContent = varsCSS(config.theme, '#pv-scope');
+  preview.update(clone(config));
+}
+applyPreview();
+renderStep();
+
+$$('#steps-nav button').forEach((b) => b.addEventListener('click', () => goStep(+b.dataset.step)));
+$('#prev-btn').addEventListener('click', () => goStep(step - 1));
+$('#next-btn').addEventListener('click', () => goStep(step + 1));
+$('#reset-values').addEventListener('click', () => { preview.reset(); toast('Preview reset to the default values.'); });
+const setWidth = (mobile) => {
+  $('#pv-frame').classList.toggle('is-mobile', mobile);
+  $('#w-desktop').setAttribute('aria-pressed', String(!mobile));
+  $('#w-mobile').setAttribute('aria-pressed', String(mobile));
+};
+$('#w-desktop').addEventListener('click', () => setWidth(false));
+$('#w-mobile').addEventListener('click', () => setWidth(true));
+const setView = (v) => {
+  $('#build-grid').dataset.view = v;
+  $('#tab-edit').setAttribute('aria-pressed', String(v === 'edit'));
+  $('#tab-preview').setAttribute('aria-pressed', String(v === 'preview'));
+  const top = $('#build').getBoundingClientRect().top;
+  if (top < 0) $('#build').scrollIntoView({ block: 'start' });
+};
+$('#tab-edit').addEventListener('click', () => setView('edit'));
+$('#tab-preview').addEventListener('click', () => setView('preview'));
+
+$('#start-over').addEventListener('click', () => {
+  if (!confirm('Start over? This clears your saved calculator in this browser.')) return;
+  store.del(STORAGE_KEY);
+  config = makeConfig('solar-cleaning');
+  snapshot = snapshotOf(config);
+  autoIds.clear(); step = 0; openItem = null;
+  changed({ rerender: true });
+  preview.reset();
+  toast('Started over with the solar cleaning model.');
+});
+
+$('#import-btn').addEventListener('click', () => $('#import-file').click());
+$('#import-file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  f.text().then((txt) => {
+    let obj;
+    try { obj = JSON.parse(txt); } catch (err) { toast('This file isn\u2019t valid JSON. Export a config file from ROI Builder and try again.'); return; }
+    const errs = validateImport(obj);
+    if (errs.length) { toast('Couldn\u2019t import: ' + errs[0]); return; }
+    config = normalize(obj);
+    snapshot = snapshotOf(config);
+    autoIds.clear(); openItem = null; step = 1;
+    changed({ rerender: true });
+    preview.reset();
+    $('#build').scrollIntoView({ block: 'start' });
+    toast(`Imported ${qt(config.content.title || 'your calculator')}.`);
+  });
+});
+
+/* Light/dark for the builder itself (the calculator has its own setting in Look). */
+(function () {
+  const btn = $('#theme-btn'), root = document.documentElement;
+  const sysDark = () => window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  const saved = store.get('roi-builder:theme');
+  if (saved === 'light' || saved === 'dark') root.dataset.theme = saved;
+  const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : sysDark();
+  const label = () => btn.setAttribute('aria-label', isDark() ? 'Switch to light mode' : 'Switch to dark mode');
+  label();
+  btn.addEventListener('click', () => { root.dataset.theme = isDark() ? 'light' : 'dark'; store.set('roi-builder:theme', root.dataset.theme); label(); });
+})();
+</script>
+</body>
+</html>
